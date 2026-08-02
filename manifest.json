@@ -9,19 +9,20 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "./favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "./placeholder.svg",
-      "sizes": "192x192",
+      "src": "./echome-logo.svg",
+      "sizes": "160x160",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "./placeholder.svg",
-      "sizes": "512x512",
+      "src": "./echome-logo.svg",
+      "sizes": "160x160",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./echome-logo.svg",
+      "sizes": "160x160",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
