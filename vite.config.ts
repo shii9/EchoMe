@@ -4,7 +4,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: mode === "production" ? "/Phishing-Analyzer/" : "/",
+  base: mode === "production" ? "/EchoMe/" : "/",
   server: {
     host: "127.0.0.1",
     port: 8080,

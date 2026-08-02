@@ -2,7 +2,7 @@
 
 ## Summary of Changes
 
-This document outlines the improvements made to the Blog section of the Phishing-Analyzer application to make it more organized, professional, and user-friendly.
+This document outlines the improvements made to the Blog section of the EchoMe application to make it more organized, professional, and user-friendly.
 
 ## Key Features Implemented
 

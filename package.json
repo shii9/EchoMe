@@ -1,7 +1,7 @@
 {
-  "name": "phishing-analyzer",
+  "name": "echome",
   "description": "EchoMe - AI-Powered Security Analysis",
-  "homepage": "https://shii9.github.io/Phishing-Analyzer/",
+  "homepage": "https://shii9.github.io/EchoMe/",
   "author": "EchoMe",
   "private": true,
   "version": "0.0.0",
