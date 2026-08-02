@@ -75,13 +75,13 @@ npm run build
 
 ## Deployment
 
-The repository includes a GitHub Actions workflow at `.github/workflows/deploy-pages.yml`.
+The repository includes a GitHub Actions workflow at `.github/workflows/deploy-pages.yml` that builds the app and publishes the `gh-pages` branch.
 
 To enable the live site:
 
 1. Open the repository's **Settings → Pages**.
-2. Set the deployment source to **GitHub Actions**.
-3. Rerun the Pages workflow if the first run was blocked while Pages was disabled.
+2. Set the source to **Deploy from a branch**.
+3. Select the `gh-pages` branch and the `/ (root)` folder.
 
 Manual deployment is also available:
 
