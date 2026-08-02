@@ -2185,16 +2185,16 @@ export const PhishingDetectorEnhanced = () => {
                 transition={{ duration: 0.4 }}
                 className="mt-6"
               >
-                <Card className="p-6 bg-gradient-card border-border shadow-xl">
-                  <div className="flex items-center justify-between mb-6">
+                <Card className="p-4 sm:p-6 bg-gradient-card border-border shadow-xl overflow-hidden">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
                     <motion.h2
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="text-2xl font-bold text-foreground"
+                      className="text-xl sm:text-2xl font-bold text-foreground"
                     >
                       Analysis Results
                     </motion.h2>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <motion.div
@@ -2393,7 +2393,7 @@ export const PhishingDetectorEnhanced = () => {
                                 >
                                   {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                                   <div className="w-8 h-8 flex items-center justify-center rounded-md bg-secondary/10 text-primary">{icon}</div>
-                                  <div className="flex-1">
+                                  <div className="flex-1 min-w-0">
                                     <div className="font-semibold">{title} <span className="text-sm text-muted-foreground">({reasons.length})</span></div>
                                   </div>
                                 </button>
@@ -2428,7 +2428,7 @@ export const PhishingDetectorEnhanced = () => {
                                           }}
                                         >
                                           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold">{index + 1}</div>
-                                          <div className="flex-1">
+                                          <div className="flex-1 min-w-0">
                                             <div className="bg-transparent p-0">
                                               <div className="flex items-center justify-between">
                                                 <div className="text-sm font-medium text-foreground truncate">{titleText.trim()}</div>
