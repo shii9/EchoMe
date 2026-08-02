@@ -1,6 +1,6 @@
 <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">EchoMe shield logo</title>
   <desc id="desc">Blue circular EchoMe security shield mark</desc>
-  <circle cx="80" cy="80" r="58" fill="#2F6FED"/>
+  <circle cx="80" cy="80" r="80" fill="#2F6FED"/>
   <path d="M80 43C73 51 65 54 56 55V76C56 93 66 104 80 109C94 104 104 93 104 76V55C95 54 87 51 80 43Z" fill="none" stroke="#0B1420" stroke-width="6" stroke-linejoin="round"/>
 </svg>
