@@ -1,0 +1,19 @@
+<svg width="640" height="180" viewBox="0 0 640 180" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">EchoMe logo</title>
+  <desc id="desc">A blue shield with a white echo mark beside the EchoMe wordmark</desc>
+  <defs>
+    <linearGradient id="shield" x1="24" y1="18" x2="150" y2="158" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4A9EFF"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="word" x1="205" y1="45" x2="570" y2="135" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E8F1FF"/>
+      <stop offset="1" stop-color="#9FC5FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="160" height="160" rx="48" fill="#0B1220" stroke="#263B5D" stroke-width="4"/>
+  <path d="M90 35L132 52V89C132 119 115 141 90 151C65 141 48 119 48 89V52L90 35Z" fill="url(#shield)"/>
+  <path d="M73 86C73 77 80 70 89 70C98 70 105 77 105 86V96C105 105 98 112 89 112C80 112 73 105 73 96V86Z" stroke="white" stroke-width="7" stroke-linecap="round"/>
+  <path d="M64 86C64 72 75 61 89 61C103 61 114 72 114 86M64 100C64 114 75 125 89 125C103 125 114 114 114 100" stroke="white" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+  <text x="204" y="116" fill="url(#word)" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="700" letter-spacing="-3">EchoMe</text>
+</svg>
