@@ -103,7 +103,6 @@ export const PhishingDetectorEnhanced = () => {
   const [apiModalOpen, setApiModalOpen] = useState(false);
 
   // Global expansion state for detection reasons UI (moved to component scope to satisfy Hooks rules)
-  const [expandedIdGlobal, setExpandedIdGlobal] = useState<string | null>(null);
   const categoryKeys = ['URLs', 'Brand', 'Content', 'Attachments', 'Advanced', 'Headers', 'Others'];
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
@@ -2367,22 +2366,6 @@ export const PhishingDetectorEnhanced = () => {
                             visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } }
                           } as any;
 
-                          const generateExplanation = (raw: string) => {
-                            const r = raw.toLowerCase();
-                            if (/ip-based|ip analyzed|ip address|direct ip/i.test(r)) return 'IP-based URLs bypass domain reputation checks and may indicate a manually hosted malicious resource. Prefer domains with valid certificates.';
-                            if (/shorten|shortener|shortened|bit\.ly|tinyurl|t\.co/i.test(r)) return 'Shortened URLs can hide the final destination; expand the short URL first or avoid clicking and verify with the sender.';
-                            if (/suspicious prize|prize|winner|congratulations/i.test(r)) return 'Prize/lottery language is a common lure used in phishing to trick users into revealing information or clicking malicious links.';
-                            if (/threatening language|account suspended|security alert|verify your account|confirm identity/i.test(r)) return 'Threatening or urgent language tries to create panic and prompt immediate action; always verify via official channels.';
-                            if (/requests sensitive information|password|credit card|ssn|otp|verification code/i.test(r)) return 'Requests for sensitive information are a major red flag; legitimate services do not ask for such data over email.';
-                            if (/no spf|no dkim|no dmarc|spf=pass|dkim=pass/i.test(r)) return 'Missing or failing SPF/DKIM/DMARC headers reduces sender authentication and increases likelihood of spoofing.';
-                            if (/mixed character|homograph|punycode/i.test(r)) return 'Mixed character sets and punycode can be used for homograph attacks where characters appear visually similar to trick users.';
-                            if (/excessive links|excessive links detected|excessive subdomains/i.test(r)) return 'Emails with many links or excessive subdomains often attempt to overwhelm users and hide malicious destinations.';
-                            if (/password-protected files|password-protected/i.test(r)) return 'Password-protected attachments are often used to bypass security scanners; treat such files with caution.';
-                            if (/phishing phrases|verify your identity|confirm your password/i.test(r)) return 'Common phishing phrases indicate scripted scams that attempt credential theft.';
-                            if (/brand impersonation|possible brand impersonation|brand impersonation detected/i.test(r)) return 'Brand impersonation attempts to mimic legitimate organizations. Check the sender address and domain carefully.';
-                            return 'This indicator was triggered by the content; expand to see exact matched text and guidance.';
-                          };
-
                           return (
                             <div className="rounded-md bg-card border border-border shadow-sm">
                               <div className="p-0">
@@ -2406,52 +2389,25 @@ export const PhishingDetectorEnhanced = () => {
                                     const titleText = parts[0] || reason;
                                     const detail = parts.slice(1).join(':').trim();
                                     const id = `${title}-${index}`;
-                                    const isExpanded = expandedIdGlobal === id;
 
                                     return (
                                       <div key={id} className="p-1">
                                         <motion.div
                                           variants={itemVariant}
                                           whileHover={{ scale: 1.01 }}
-                                          className="flex items-start gap-3 cursor-pointer border-2 border-border/80 rounded-md p-2 bg-secondary/20"
-                                          onClick={() => {
-                                            if (isExpanded) setExpandedIdGlobal(null);
-                                            else {
-                                              setExpandedIdGlobal(id);
-                                              setOpenCategories(() => {
-                                                const obj: Record<string, boolean> = {};
-                                                categoryKeys.forEach(k => obj[k] = false);
-                                                obj[title] = true;
-                                                return obj;
-                                              });
-                                            }
-                                          }}
+                                          className="flex items-start gap-3 border-2 border-border/80 rounded-md p-2 bg-secondary/20"
                                         >
                                           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold">{index + 1}</div>
                                           <div className="flex-1 min-w-0">
                                             <div className="bg-transparent p-0">
-                                              <div className="flex items-center justify-between">
-                                                <div className="text-sm font-medium text-foreground truncate">{titleText.trim()}</div>
-                                                <div className="text-xs text-muted-foreground">{isExpanded ? 'Hide' : 'Details'}</div>
+                                              <div className="min-w-0">
+                                                <div className="text-sm font-medium text-foreground break-words leading-relaxed">{titleText.trim()}</div>
+                                                {detail && <div className="text-xs text-muted-foreground mt-1 break-words leading-relaxed">{detail}</div>}
                                               </div>
-                                              {detail && <div className="text-xs text-muted-foreground mt-1 truncate">{detail}</div>}
                                             </div>
                                           </div>
                                         </motion.div>
 
-                                        <AnimatePresence>
-                                          {isExpanded && (
-                                            <motion.div
-                                              initial={{ opacity: 0, y: 20 }}
-                                              animate={{ opacity: 1, y: 0 }}
-                                              exit={{ opacity: 0, y: 10 }}
-                                              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                                              className="mt-1 overflow-hidden text-sm text-muted-foreground bg-secondary/10 p-3 rounded"
-                                            >
-                                              {generateExplanation(reason)}
-                                            </motion.div>
-                                          )}
-                                        </AnimatePresence>
                                       </div>
                                     );
                                   })}
