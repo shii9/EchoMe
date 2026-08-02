@@ -1565,11 +1565,27 @@ export const PhishingDetectorEnhanced = () => {
         >
 
           <div className="text-center mb-4">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-full mb-4 md:mb-6 shadow-glow relative overflow-hidden"
+            >
+              <img src={`${import.meta.env.BASE_URL}echome-logo.svg`} alt="EchoMe shield" className="w-full h-full" />
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-3 md:mb-6 tracking-tight leading-tight pb-1"
+            >
+              EchoMe
+            </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed px-2 mb-6 md:mb-8"
+              transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed px-2 mt-2 md:mt-4 mb-6 md:mb-8"
             >
               Harness next-generation AI algorithms to instantly intercept dynamic phishing attacks, trace hidden malicious URLs, and neutralize deceptive content across all vectors.
             </motion.p>
