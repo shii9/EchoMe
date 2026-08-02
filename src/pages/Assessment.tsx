@@ -104,7 +104,7 @@ const Assessment = () => {
       />
 
       {/* Desktop Quick Actions - Hidden on Mobile */}
-      <div className="hidden md:flex fixed top-20 right-4 flex-col gap-2 z-30 no-print">
+      <div className="hidden lg:flex fixed top-20 right-4 flex-col gap-2 z-30 no-print">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

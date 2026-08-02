@@ -1477,7 +1477,7 @@ export const PhishingDetectorEnhanced = () => {
         `}</style>
 
         {/* Desktop Quick Actions - Hidden on Mobile */}
-        <div className="hidden md:flex fixed top-20 right-4 flex-col gap-2 z-30 no-print">
+        <div className="hidden lg:flex fixed top-20 right-4 flex-col gap-2 z-30 no-print">
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Tooltip>
               <TooltipTrigger asChild>

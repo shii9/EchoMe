@@ -78,8 +78,8 @@ export const ThreatPatternTimeline = ({ history }: ThreatPatternTimelineProps) =
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <Card className="p-8 bg-gradient-card border-border/50 shadow-card backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-6">
+      <Card className="p-4 sm:p-8 bg-gradient-card border-border/50 shadow-card backdrop-blur-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <Calendar className="w-6 h-6 text-primary" />
@@ -87,7 +87,7 @@ export const ThreatPatternTimeline = ({ history }: ThreatPatternTimelineProps) =
             <h3 className="text-xl font-bold">Threat Pattern Timeline</h3>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant={timeRange === 'day' ? 'default' : 'outline'}
               size="sm"

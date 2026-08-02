@@ -37,7 +37,7 @@ export const Navbar = ({ onHistoryClick, onQuizClick, onMenuClick }: NavbarProps
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/">
@@ -130,7 +130,7 @@ export const Navbar = ({ onHistoryClick, onQuizClick, onMenuClick }: NavbarProps
           </div>
 
           {/* Right Action Buttons */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
             <button
               onClick={onHistoryClick}
               className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border border-border bg-card hover:bg-secondary text-foreground transition-all shadow-sm"
@@ -150,7 +150,7 @@ export const Navbar = ({ onHistoryClick, onQuizClick, onMenuClick }: NavbarProps
           </div>
 
           {/* Mobile Menu Trigger */}
-          <div className="flex md:hidden items-center">
+          <div className="flex lg:hidden items-center">
             <Button
               size="icon"
               variant="ghost"

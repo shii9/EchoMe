@@ -347,36 +347,36 @@ Thank you for your inquiry regarding **"${prompt}"**. Here is an executive break
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className="max-w-4xl w-[90vw] h-[85vh] p-0 gap-0 bg-gradient-to-br from-background via-background to-primary/5 border-2 border-primary/20 shadow-2xl overflow-hidden flex flex-col [&>button]:hidden"
+        className="w-[calc(100vw-1rem)] max-w-4xl h-[85dvh] max-h-[calc(100dvh-1rem)] sm:w-[90vw] sm:h-[85vh] sm:max-h-none rounded-xl sm:rounded-lg p-0 gap-0 bg-gradient-to-br from-background via-background to-primary/5 border-2 border-primary/20 shadow-2xl overflow-hidden flex flex-col [&>button]:hidden"
         aria-describedby="ai-assistant-description"
       >
         {/* ── Header ─────────────────────────────────────────────────────────── */}
-        <div className="bg-gradient-primary px-6 py-4 border-b border-primary/20 flex-shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="bg-gradient-primary px-4 py-3 sm:px-6 sm:py-4 border-b border-primary/20 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3">
             <motion.div
-              className="p-2.5 rounded-xl bg-white/20 backdrop-blur-sm"
+              className="p-2 sm:p-2.5 rounded-xl bg-white/20 backdrop-blur-sm flex-shrink-0"
               animate={{ rotate: [0, 5, -5, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
             >
-              <Brain className="w-6 h-6 text-white" />
+              <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </motion.div>
 
-            <div className="flex-1">
-              <DialogTitle className="text-2xl font-bold text-white">
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="text-lg sm:text-2xl font-bold leading-tight text-white">
                 Nio AI Security Expert
               </DialogTitle>
-              <p id="ai-assistant-description" className="text-xs text-white/80 flex items-center gap-1.5">
+              <p id="ai-assistant-description" className="text-[10px] sm:text-xs text-white/80 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-relaxed">
                 <span className="inline-block w-2 h-2 rounded-full bg-green-300 animate-pulse" />
                 Always online · No setup · No limits · Free forever
               </p>
             </div>
 
-            <div className="flex items-center gap-3 relative">
+            <div className="flex items-center gap-2 sm:gap-3 relative flex-shrink-0">
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                <Sparkles className="w-5 h-5 text-white/90" />
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white/90" />
               </motion.div>
 
               <button
@@ -395,13 +395,13 @@ Thank you for your inquiry regarding **"${prompt}"**. Here is an executive break
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mx-6 mt-6 p-5 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 flex-shrink-0"
+            className="mx-3 mt-3 p-3 sm:mx-6 sm:mt-6 sm:p-5 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 flex-shrink-0"
           >
-            <div className="flex items-start gap-3 mb-4">
-              <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-semibold text-foreground mb-1">Get Started</h4>
-                <p className="text-sm text-muted-foreground">
+                <h4 className="text-sm sm:text-base font-semibold text-foreground mb-1">Get Started</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                   Ask me anything about security — I'm ready right now, no setup needed!
                 </p>
               </div>
@@ -413,7 +413,7 @@ Thank you for your inquiry regarding **"${prompt}"**. Here is an executive break
                   variant="outline"
                   size="sm"
                   onClick={() => handleSend(question)}
-                  className="text-xs bg-background/50 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
+                  className="w-full sm:w-auto h-auto min-h-9 justify-start whitespace-normal text-left text-xs bg-background/50 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
                 >
                   {question}
                 </Button>
@@ -423,9 +423,9 @@ Thank you for your inquiry regarding **"${prompt}"**. Here is an executive break
         )}
 
         {/* ── Messages ───────────────────────────────────────────────────────── */}
-        <div className="flex-1 min-h-0 px-6 py-4 overflow-hidden">
+        <div className="flex-1 min-h-0 px-3 py-3 sm:px-6 sm:py-4 overflow-hidden">
           <ScrollArea className="h-full w-full">
-            <div ref={scrollRef} className="space-y-4 pr-4 pb-4">
+            <div ref={scrollRef} className="space-y-4 pr-2 sm:pr-4 pb-4">
               <AnimatePresence mode="popLayout">
                 {messages.map((message, index) => (
                   <motion.div
@@ -437,7 +437,7 @@ Thank you for your inquiry regarding **"${prompt}"**. Here is an executive break
                     className={`flex w-full ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-2xl p-4 shadow-lg ${message.role === 'user'
+                      className={`max-w-[94%] sm:max-w-[85%] rounded-2xl p-3 sm:p-4 shadow-lg ${message.role === 'user'
                         ? 'bg-gradient-primary text-primary-foreground'
                         : 'bg-card text-foreground border border-border/50'
                         }`}
@@ -539,7 +539,7 @@ Thank you for your inquiry regarding **"${prompt}"**. Here is an executive break
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="px-6 pb-3 flex-shrink-0"
+            className="px-3 pb-2 sm:px-6 sm:pb-3 flex-shrink-0"
           >
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
               {SUGGESTED_QUESTIONS.map((question, idx) => (
@@ -558,8 +558,8 @@ Thank you for your inquiry regarding **"${prompt}"**. Here is an executive break
         )}
 
         {/* ── Input bar ──────────────────────────────────────────────────────── */}
-        <div className="px-6 pb-6 pt-2 bg-gradient-to-t from-background/50 to-transparent backdrop-blur-sm border-t border-border/30 flex-shrink-0">
-          <div className="flex gap-3 items-center">
+        <div className="px-3 pb-3 pt-2 sm:px-6 sm:pb-6 bg-gradient-to-t from-background/50 to-transparent backdrop-blur-sm border-t border-border/30 flex-shrink-0">
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3 sm:items-center">
             <div className="flex-1 relative">
               <textarea
                 value={input}
@@ -572,13 +572,13 @@ Thank you for your inquiry regarding **"${prompt}"**. Here is an executive break
                 }}
                 placeholder="Ask about phishing, email security, or best practices..."
                 rows={1}
-                className="w-full h-12 py-3 px-4 pr-4 resize-none bg-background/80 border border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm rounded-xl outline-none block"
+                className="w-full h-11 sm:h-12 py-2.5 sm:py-3 px-3 sm:px-4 resize-none bg-background/80 border border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm rounded-xl outline-none block"
               />
             </div>
             {isGenerating && !input.trim() ? (
               <Button
                 onClick={handleStop}
-                className="bg-destructive hover:bg-destructive/95 text-destructive-foreground transition-all shadow-lg hover:shadow-xl h-12 px-6 rounded-xl flex-shrink-0"
+                className="w-full sm:w-auto bg-destructive hover:bg-destructive/95 text-destructive-foreground transition-all shadow-lg hover:shadow-xl h-11 sm:h-12 px-4 sm:px-6 rounded-xl flex-shrink-0"
                 size="lg"
               >
                 <div className="w-3 h-3 bg-current mr-2 rounded-sm" />
@@ -588,7 +588,7 @@ Thank you for your inquiry regarding **"${prompt}"**. Here is an executive break
               <Button
                 onClick={() => handleSend()}
                 disabled={!input.trim()}
-                className="bg-gradient-primary hover:opacity-90 transition-all shadow-lg hover:shadow-xl h-12 px-6 rounded-xl flex-shrink-0"
+                className="w-full sm:w-auto bg-gradient-primary hover:opacity-90 transition-all shadow-lg hover:shadow-xl h-11 sm:h-12 px-4 sm:px-6 rounded-xl flex-shrink-0"
                 size="lg"
               >
                 <Send className="w-5 h-5 mr-2" />
@@ -596,7 +596,7 @@ Thank you for your inquiry regarding **"${prompt}"**. Here is an executive break
               </Button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+          <p className="text-[10px] sm:text-xs text-muted-foreground mt-2 flex flex-wrap items-center gap-1.5 leading-relaxed">
             <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             Secure AI guidance with a local fallback
           </p>
