@@ -76,10 +76,10 @@ export const OnboardingTour = ({ onComplete }: OnboardingTourProps) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', damping: 25 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md mx-4"
+            className="fixed top-1/2 left-3 right-3 -translate-y-1/2 z-50 max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain sm:left-1/2 sm:right-auto sm:w-[calc(100%-2rem)] sm:max-w-md sm:-translate-x-1/2"
           >
             <Card className="border-2 border-primary/20 shadow-glow">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 {/* Close Button */}
                 <button
                   onClick={handleSkip}
@@ -101,17 +101,17 @@ export const OnboardingTour = ({ onComplete }: OnboardingTourProps) => {
                       repeat: Infinity,
                       repeatDelay: 1
                     }}
-                    className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center"
+                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-primary flex items-center justify-center"
                   >
-                    <Icon className="w-8 h-8 text-primary-foreground" />
+                    <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-primary-foreground" />
                   </motion.div>
                 </div>
 
                 {/* Content */}
-                <h3 className="text-xl font-bold text-center mb-2">
+                <h3 className="text-lg sm:text-xl font-bold text-center mb-2">
                   {step.title}
                 </h3>
-                <p className="text-muted-foreground text-center mb-6">
+                <p className="text-sm sm:text-base text-muted-foreground text-center mb-5 sm:mb-6">
                   {step.description}
                 </p>
 
@@ -134,7 +134,7 @@ export const OnboardingTour = ({ onComplete }: OnboardingTourProps) => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-3">
+                <div className="flex flex-col-reverse sm:flex-row gap-3">
                   {currentStep > 0 && (
                     <Button
                       variant="outline"

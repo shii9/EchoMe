@@ -1586,7 +1586,7 @@ export const PhishingDetectorEnhanced = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed px-2 mb-3 md:mb-5"
+              className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed px-2 mt-2 md:mt-4 mb-3 md:mb-5"
             >
               Harness next-generation AI algorithms to instantly intercept dynamic phishing attacks, trace hidden malicious URLs, and neutralize deceptive content across all vectors.
             </motion.p>
