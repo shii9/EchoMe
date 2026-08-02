@@ -2,13 +2,52 @@ import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
-export const ThemeToggle = ({ className = '' }: { className?: string }) => {
+export const ThemeToggle = ({ className = '', variant = 'compact' }: { className?: string; variant?: 'compact' | 'mobile' }) => {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
   const theme = mounted ? resolvedTheme : 'dark';
+
+  if (variant === 'mobile') {
+    return (
+      <div
+        className={`flex w-full items-center gap-1 rounded-full border border-border/70 bg-muted/70 p-1 shadow-sm ${className}`}
+        role="group"
+        aria-label="Choose color theme"
+      >
+        <button
+          type="button"
+          onClick={() => setTheme('light')}
+          aria-label="Use light mode"
+          aria-pressed={theme === 'light'}
+          className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-medium transition-all duration-200 ${
+            theme === 'light'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-background hover:text-foreground'
+          }`}
+        >
+          <Sun className="h-4 w-4" />
+          <span>Day</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTheme('dark')}
+          aria-label="Use dark mode"
+          aria-pressed={theme === 'dark'}
+          className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-medium transition-all duration-200 ${
+            theme === 'dark'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-background hover:text-foreground'
+          }`}
+        >
+          <Moon className="h-4 w-4" />
+          <span>Night</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div

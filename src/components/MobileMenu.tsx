@@ -68,7 +68,7 @@ export const MobileMenu = ({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-card border-l border-border z-50 lg:hidden shadow-2xl"
+            className="fixed inset-0 w-full bg-card border-border z-50 lg:hidden shadow-2xl"
           >
             <div className="flex flex-col h-full">
               {/* Header */}
@@ -80,7 +80,6 @@ export const MobileMenu = ({
                     className="w-8 h-8 rounded-full"
                   />
                   <h2 className="text-lg font-semibold">EchoMe</h2>
-                  <ThemeToggle />
                 </div>
                 <button
                   onClick={onClose}
@@ -91,8 +90,8 @@ export const MobileMenu = ({
               </div>
 
               {/* Menu Items */}
-              <div className="flex-1 overflow-y-auto py-4">
-                <div className="space-y-4 px-2">
+              <div className="flex-1 overflow-y-auto py-5">
+                <div className="space-y-5 px-4">
                   {/* Navigation Links */}
                   <div className="space-y-1">
                     {navigationItems.map((item, index) => {
@@ -122,7 +121,7 @@ export const MobileMenu = ({
 
                   {/* Action Items */}
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground px-3 mb-2">Actions</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground px-3 mb-2">Actions</p>
                     {actionItems.map((item, index) => {
                       const Icon = item.icon;
                       return (
@@ -146,6 +145,11 @@ export const MobileMenu = ({
                     })}
                   </div>
                 </div>
+              </div>
+
+              {/* Keep the theme control reachable at the bottom on mobile. */}
+              <div className="border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <ThemeToggle variant="mobile" />
               </div>
             </div>
           </motion.div>
