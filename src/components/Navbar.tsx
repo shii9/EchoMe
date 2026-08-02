@@ -154,10 +154,10 @@ export const Navbar = ({ onHistoryClick, onQuizClick, onMenuClick }: NavbarProps
             <Button
               size="icon"
               variant="ghost"
-              className="rounded-full w-12 h-12"
+              className="rounded-xl w-12 h-12 bg-card/90 border border-border/70 shadow-lg text-foreground hover:bg-primary/15 hover:text-primary"
               onClick={onMenuClick}
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-7 h-7" />
             </Button>
           </div>
         </nav>
