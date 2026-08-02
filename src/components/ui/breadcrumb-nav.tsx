@@ -9,7 +9,7 @@ import {
 } from './breadcrumb';
 
 interface BreadcrumbNavProps {
-  currentView?: 'home' | 'stats' | 'history' | 'quiz' | 'trends' | 'ai' | 'assessment';
+  currentView?: 'home' | 'stats' | 'history' | 'quiz' | 'trends' | 'ai' | 'assessment' | 'blog';
 }
 
 export const BreadcrumbNav = ({ currentView = 'home' }: BreadcrumbNavProps) => {
@@ -20,7 +20,8 @@ export const BreadcrumbNav = ({ currentView = 'home' }: BreadcrumbNavProps) => {
     quiz: 'Quiz Mode',
     trends: 'Trends',
     ai: 'AI Assistant',
-    assessment: 'Assessment'
+    assessment: 'Assessment',
+    blog: 'Blog'
   };
 
   return (

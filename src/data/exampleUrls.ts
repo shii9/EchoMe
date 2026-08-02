@@ -32,14 +32,14 @@ export const exampleUrls: ExampleUrl[] = [
   {
     id: 'suspicious-url-1',
     title: 'Suspicious - Typosquat',
-    category: 'phishing',
+    category: 'suspicious',
     content: 'https://secure-bkash.com/login',
     description: 'Looks like bkash but domain is secure-bkash.com (typosquat). Signal: brands rarely use hyphenated domains.'
   },
   {
     id: 'suspicious-url-2',
     title: 'Suspicious - Subdomain Abuse',
-    category: 'phishing',
+    category: 'suspicious',
     technique: 'Subdomain abuse',
     content: 'https://bkash.com.scam-domain.xyz/login',
     description: 'bkash.com is just a subdomain of scam-domain.xyz. Signal: real bkash would own the root domain.'
@@ -47,7 +47,7 @@ export const exampleUrls: ExampleUrl[] = [
   {
     id: 'suspicious-url-3',
     title: 'Suspicious - Direct IP',
-    category: 'phishing',
+    category: 'suspicious',
     technique: 'IP-based URLs',
     content: 'http://192.0.2.45/admin',
     description: 'Direct IPs for login/admin pages are unusual for big services. Signal: could be a private panel or attacker host.'
@@ -55,7 +55,7 @@ export const exampleUrls: ExampleUrl[] = [
   {
     id: 'suspicious-url-4',
     title: 'Suspicious - Shortened Link',
-    category: 'phishing',
+    category: 'suspicious',
     technique: 'URL shorteners',
     content: 'https://bit.ly/2XyZabc',
     description: 'Shorteners hide the destination. Signal: used legitimately but also abused in phishing.'
@@ -63,7 +63,7 @@ export const exampleUrls: ExampleUrl[] = [
   {
     id: 'suspicious-url-5',
     title: 'Suspicious - Homoglyph',
-    category: 'phishing',
+    category: 'suspicious',
     technique: 'Homoglyph attacks',
     content: 'https://www.g00gle.com/',
     description: 'Zeroes instead of o\'s. Signal: lookalike characters or homoglyphs aim to trick your eye.'

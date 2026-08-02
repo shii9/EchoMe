@@ -85,7 +85,7 @@
 
 Before you begin, ensure you have the following installed:
 
-- **Node.js** (v18.0.0 or higher)
+- **Node.js** (v20.19.0 or higher)
 - **npm** (v9.0.0 or higher) or **bun** (v1.0.0 or higher)
 - **Git**
 
@@ -108,7 +108,7 @@ cd Phishing-Analyzer
 
 Using npm:
 ```bash
-npm install
+npm ci
 ```
 
 Or using bun (faster):
@@ -127,7 +127,6 @@ cp .env.example .env
 Then edit `.env` with your actual values:
 
 ```env
-VITE_SUPABASE_PROJECT_ID=your_project_id
 VITE_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 ```
@@ -147,7 +146,7 @@ Or with bun:
 bun run dev
 ```
 
-The application will start at `http://localhost:5173`
+The application will start at `http://localhost:8080`
 
 #### Production Build
 
@@ -168,6 +167,20 @@ bun run preview
 npm run lint
 ```
 
+#### GitHub Pages deployment
+
+The production build is configured for this repository's GitHub Pages address:
+`https://shii9.github.io/Phishing-Analyzer/`.
+
+```bash
+npm ci
+npm run build
+npm run deploy
+```
+
+The `deploy` command publishes the `dist` folder through the `gh-pages`
+package. Configure the repository's Pages source to the `gh-pages` branch.
+
 ---
 
 ## 📖 Usage
@@ -176,7 +189,7 @@ npm run lint
 
 1. **Open the application** in your browser
 2. **Paste or type** an email into the text area
-3. **Click "Analyze Email"** or press `Ctrl+Enter`
+3. Click **Analyze Email**
 4. **Review the results**: threat score, detected issues, and recommendations
 
 ### Using Example Emails
@@ -187,20 +200,20 @@ npm run lint
 
 ### Viewing Analysis History
 
-1. Press **`H`** or click the history icon
+1. Click the history icon
 2. Browse your last 20 analyses
 3. Click any history item to reload it
 
 ### Taking Security Quizzes
 
-1. Press **`Q`** or click the quiz icon
+1. Click the quiz icon
 2. Answer 5 multiple-choice questions
 3. Get instant feedback and learn from explanations
 4. Track your quiz scores in the stats dashboard
 
 ### Checking Your Statistics
 
-1. Press **`S`** or navigate to `/stats`
+1. Navigate to `/stats`
 2. View your total analyses, detection accuracy, and achievements
 3. Track your progress toward unlocking new achievements
 

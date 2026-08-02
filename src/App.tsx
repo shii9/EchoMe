@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Stats from "./pages/Stats";
 import Trends from "./pages/Trends";
 import Assessment from "./pages/Assessment";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,12 +22,14 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/stats" element={<Stats />} />
               <Route path="/trends" element={<Trends />} />
               <Route path="/assessment" element={<Assessment />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:id" element={<BlogPost />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

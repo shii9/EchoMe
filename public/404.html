@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>EchoMe</title>
+    <script>
+      (function () {
+        var base = '/Phishing-Analyzer/';
+        var path = window.location.pathname.indexOf(base) === 0
+          ? window.location.pathname.slice(base.length)
+          : '';
+        var query = window.location.search;
+        var target = base + '?p=' + encodeURIComponent('/' + path);
+        if (query) target += '&q=' + encodeURIComponent(query);
+        window.location.replace(target);
+      })();
+    </script>
+  </head>
+  <body>Loading EchoMe…</body>
+</html>

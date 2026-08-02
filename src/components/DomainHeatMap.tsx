@@ -1,229 +1,56 @@
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Card } from './ui/card';
-import { AlertTriangle, Info, Globe } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { PhishingResult } from '../types/phishing';
+import { useMemo } from 'react';
+import { Globe } from 'lucide-react';
+import { ThreatHeatMapCard, type HeatMapToken, type ThreatExplanation } from './ThreatHeatMapCard';
+import type { PhishingResult } from '../types/phishing';
 
 interface DomainHeatMapProps {
   domainText: string;
   result?: PhishingResult;
 }
 
+const suspiciousTld = /\.(?:tk|ml|ga|cf|gq|xyz|top|club|online|site|website|space|click|buzz|work|party|review|download|loan|win)$/i;
+const brandRoots = ['paypal.com', 'amazon.com', 'microsoft.com', 'apple.com', 'google.com', 'facebook.com', 'instagram.com', 'netflix.com', 'linkedin.com', 'youtube.com', 'whatsapp.com', 'telegram.org', 'bkash.com', 'nagad.com.bd', 'daraz.com.bd'];
+const brandNames = /(?:paypal|amazon|microsoft|apple|google|facebook|instagram|netflix|linkedin|youtube|whatsapp|telegram|bkash|nagad|daraz)/i;
+
+const classifyDomain = (raw: string): HeatMapToken => {
+  const value = raw.trim();
+  const lower = value.toLowerCase().replace(/^[a-z][a-z\d+.-]*:\/\//, '').replace(/\/$/, '');
+  if (!value) return { text: raw, intensity: 0 };
+  if (/[^a-z0-9.-]/i.test(lower) || lower.startsWith('-') || lower.endsWith('-')) return { text: raw, intensity: 4, category: 'invalid_chars' };
+  if (/(?:^|\.)xn--|[^\x00-\x7F]/i.test(lower)) return { text: raw, intensity: 4, category: 'homograph' };
+  if (brandNames.test(lower) && !brandRoots.some(root => lower === root || lower.endsWith(`.${root}`))) return { text: raw, intensity: 4, category: 'brand_impersonation' };
+  if (suspiciousTld.test(lower)) return { text: raw, intensity: 3, category: 'suspicious_tld' };
+  if (lower.split('.').length > 4) return { text: raw, intensity: 2, category: 'deep_subdomain' };
+  if (/\d{4,}/.test(lower)) return { text: raw, intensity: 2, category: 'numbers' };
+  if (lower.length > 28) return { text: raw, intensity: 2, category: 'long_domain' };
+  if (/^(?:[a-z0-9-]+\.)+[a-z]{2,}$/i.test(lower)) return { text: raw, intensity: 1, category: 'valid_domain' };
+  return { text: raw, intensity: 0 };
+};
+
+const explanations: Record<string, ThreatExplanation> = {
+  invalid_chars: { title: 'Invalid domain characters', description: 'The value contains characters that are not valid in a normal domain name.', tips: ['Check for copied punctuation or spaces', 'Do not open malformed links', 'Use the official domain typed manually'] },
+  homograph: { title: 'Lookalike domain', description: 'Punycode or non-ASCII characters can make a fake domain resemble a trusted one.', tips: ['Check the exact spelling', 'Avoid unfamiliar internationalized domains', 'Use a saved bookmark for trusted services'] },
+  brand_impersonation: { title: 'Brand impersonation', description: 'A familiar brand appears in a domain that is not one of its official domains.', tips: ['Read the final registrable domain', 'Do not trust a brand name in a subdomain', 'Verify through the official website'] },
+  suspicious_tld: { title: 'Higher-risk domain extension', description: 'Some extensions are frequently abused and deserve additional verification.', tips: ['Confirm who owns the domain', 'Do not rely on HTTPS alone', 'Check reputation before signing in'] },
+  deep_subdomain: { title: 'Deep subdomain structure', description: 'Many nested subdomains can hide the real organization that owns the domain.', tips: ['Read from the right side of the domain', 'Check the registrable domain', 'Be cautious of brand names in subdomains'] },
+  numbers: { title: 'Unusual number pattern', description: 'Long numeric sequences can indicate generated or disposable domains.', tips: ['Verify the domain independently', 'Look for spelling and ownership clues', 'Avoid login pages on unfamiliar domains'] },
+  long_domain: { title: 'Unusually long domain', description: 'Long domains can be used to hide confusing combinations or impersonation clues.', tips: ['Read the domain in sections', 'Check the final domain owner', 'Use a domain reputation service'] },
+  valid_domain: { title: 'Low-risk domain structure', description: 'This domain has a valid structure and no strong local warning was found.', tips: ['Confirm the domain owner', 'Check the context where it appeared', 'Use official bookmarks for sensitive tasks'] }
+};
+
 export const DomainHeatMap = ({ domainText, result }: DomainHeatMapProps) => {
-  const [selectedThreat, setSelectedThreat] = useState<{ word: string; category: string; } | null>(null);
-
-  const highlightedText = useMemo(() => {
-    if (!domainText) return [];
-
-    const domains = domainText.split('\n').filter(line => line.trim());
-    const allWords: Array<{ word: string; intensity: number; category: string; index: number }> = [];
-
-    domains.forEach((domain, domainIndex) => {
-      const words = domain.split(/(\s+|\.)/);
-      words.forEach((word, wordIndex) => {
-        const lowerWord = word.toLowerCase().trim();
-        let intensity = 0;
-        let category = '';
-
-        if (/\.(tk|ml|ga|cf|gq|xyz|top|club|online|site)$/.test(lowerWord)) {
-          intensity = 3;
-          category = 'suspicious_tld';
-        } else if (word.length > 20) {
-          intensity = 2;
-          category = 'long_domain';
-        } else if (/^\d+$/.test(word) && word.length > 3) {
-          intensity = 2;
-          category = 'numbers';
-        } else if (!/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(word) && word !== '.') {
-          intensity = 4;
-          category = 'invalid_chars';
-        }
-
-        allWords.push({ word, intensity, category, index: domainIndex * 100 + wordIndex });
-      });
-    });
-
-    return allWords;
-  }, [domainText]);
-
-  const getHighlightClass = (intensity: number, category: string) => {
-    switch (intensity) {
-      case 2:
-        return 'bg-warning/20 text-warning-foreground border-b-2 border-warning';
-      case 3:
-        return 'bg-danger/30 text-danger-foreground border-b-2 border-danger font-semibold';
-      case 4:
-        return 'bg-danger/40 text-danger-foreground border-b-2 border-danger font-bold animate-pulse';
-      default:
-        return '';
-    }
-  };
-
-  const getCategoryLabel = (category: string) => {
-    const labels: Record<string, string> = {
-      suspicious_tld: 'Suspicious TLD',
-      long_domain: 'Unusually Long Domain',
-      numbers: 'High Number Count',
-      invalid_chars: 'Invalid Characters'
-    };
-    return labels[category] || '';
-  };
-
-  const suspiciousCount = highlightedText.filter(item => item.intensity > 0).length;
-
-  const getThreatExplanation = (category: string) => {
-    const explanations: Record<string, { title: string; description: string; tips: string[] }> = {
-      suspicious_tld: {
-        title: 'Suspicious Top-Level Domain',
-        description: 'Free or unusual TLDs are often used by malicious websites and phishing campaigns.',
-        tips: [
-          'Stick to well-known TLDs like .com, .org, .edu',
-          'Research unfamiliar TLDs before visiting',
-          'Be extra cautious with new or free domain extensions'
-        ]
-      },
-      long_domain: {
-        title: 'Unusually Long Domain Name',
-        description: 'Very long domain names can be used to hide malicious content or create confusion.',
-        tips: [
-          'Check the domain carefully for misspellings',
-          'Look for suspicious patterns or unusual combinations',
-          'Use domain reputation services for unknown long domains'
-        ]
-      },
-      numbers: {
-        title: 'High Number of Digits',
-        description: 'Domains with many numbers may be generated by malware (DGA - Domain Generation Algorithms).',
-        tips: [
-          'Be cautious with domains containing many random numbers',
-          'Check if the domain looks computer-generated',
-          'Verify the domain\'s legitimacy through multiple sources'
-        ]
-      },
-      invalid_chars: {
-        title: 'Invalid Domain Characters',
-        description: 'Domain names contain characters that are not allowed in valid domain names.',
-        tips: [
-          'Valid domains use letters, numbers, and hyphens only',
-          'Check for special characters or symbols',
-          'Use proper domain validation tools'
-        ]
-      }
-    };
-    return explanations[category] || { title: 'Unknown Threat', description: '', tips: [] };
-  };
-
+  const tokens = useMemo(() => domainText.split(/(\s+)/).map(classifyDomain), [domainText]);
   return (
-    <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <Card className="p-6 bg-gradient-card border-border shadow-xl">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Globe className="w-5 h-5" />
-              Domain Threat Heat Map
-            </h3>
-            {suspiciousCount > 0 && (
-              <div className="flex items-center gap-2 text-warning">
-                <AlertTriangle className="w-4 h-4" />
-                <span className="text-sm font-medium">{suspiciousCount} suspicious elements</span>
-              </div>
-            )}
-          </div>
-
-          <div className="mb-4 flex flex-wrap gap-2 text-xs">
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-warning/20 border-b-2 border-warning rounded" />
-              <span className="text-muted-foreground">Medium Risk</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-danger/30 border-b-2 border-danger rounded" />
-              <span className="text-muted-foreground">High Risk</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-danger/40 border-b-2 border-danger rounded" />
-              <span className="text-muted-foreground">Critical</span>
-            </div>
-          </div>
-
-          <div className="bg-background/50 p-4 rounded-lg border border-border max-h-[300px] overflow-y-auto">
-            <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-              {domainText.split('\n').map((domain, domainIndex) => (
-                <div key={domainIndex} className="mb-2">
-                  {domain.split(/(\s+|\.)/).map((word, wordIndex) => {
-                    const item = highlightedText.find(h => h.index === domainIndex * 100 + wordIndex);
-                    return (
-                      <motion.span
-                        key={wordIndex}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: (domainIndex * 100 + wordIndex) * 0.01 }}
-                        className={`${item ? getHighlightClass(item.intensity, item.category) : ''} transition-all duration-200 rounded px-0.5 ${
-                          item && item.intensity > 0 ? 'cursor-pointer hover:opacity-80' : ''
-                        }`}
-                        title={item && item.intensity > 0 ? `Click to learn about: ${getCategoryLabel(item.category)}` : ''}
-                        onClick={() => item && item.intensity > 0 && setSelectedThreat({ word: item.word, category: item.category })}
-                      >
-                        {word}
-                      </motion.span>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {suspiciousCount > 0 && (
-            <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/20 flex items-start gap-2">
-              <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-muted-foreground">
-                Click on any highlighted element to learn why it's suspicious
-              </p>
-            </div>
-          )}
-        </Card>
-      </motion.div>
-
-      <Dialog open={!!selectedThreat} onOpenChange={() => setSelectedThreat(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-warning" />
-              {selectedThreat && getThreatExplanation(selectedThreat.category).title}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedThreat && (
-            <div className="space-y-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-medium">Detected element:</p>
-                <p className="text-lg font-bold text-primary mt-1">"{selectedThreat.word}"</p>
-              </div>
-
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  {getThreatExplanation(selectedThreat.category).description}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm font-semibold mb-2">Protection Tips:</p>
-                <ul className="space-y-2">
-                  {getThreatExplanation(selectedThreat.category).tips.map((tip, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <span className="text-primary mt-0.5">•</span>
-                      <span>{tip}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+    <ThreatHeatMapCard
+      title="Domain Threat Heat Map"
+      icon={<Globe className="h-5 w-5" />}
+      tokens={tokens}
+      result={result}
+      itemLabel="suspicious elements"
+      emptyMessage="Enter a domain to inspect its structure."
+      getCategoryLabel={category => explanations[category]?.title || 'Domain indicator'}
+      getThreatExplanation={category => explanations[category] || explanations.valid_domain}
+    />
   );
 };
+

@@ -7,7 +7,7 @@ export const exportToPDF = (result: PhishingResult, emailText: string) => {
 
   // Title
   doc.setFontSize(20);
-  doc.text('Phishing Analyzer Report', 20, 20);
+  doc.text('EchoMe Report', 20, 20);
 
   // Date
   doc.setFontSize(10);
@@ -53,7 +53,7 @@ export const exportToPDF = (result: PhishingResult, emailText: string) => {
   }
 
   // Save
-  doc.save(`phishing-analyzer-${Date.now()}.pdf`);
+  doc.save(`echome-${Date.now()}.pdf`);
 };
 
 export const exportHistoryToPDF = (history: AnalysisHistory[]) => {
@@ -63,7 +63,7 @@ export const exportHistoryToPDF = (history: AnalysisHistory[]) => {
 
   // Title
   doc.setFontSize(20);
-  doc.text('Phishing Analyzer History Report', 20, 20);
+  doc.text('EchoMe History Report', 20, 20);
 
   // Date
   doc.setFontSize(10);
@@ -111,5 +111,5 @@ export const exportHistoryToPDF = (history: AnalysisHistory[]) => {
   });
 
   // Save
-  doc.save(`phishing-analyzer-history-${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`echome-history-${new Date().toISOString().split('T')[0]}.pdf`);
 };

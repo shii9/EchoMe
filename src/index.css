@@ -8,67 +8,98 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 25% 6%;
-    --foreground: 210 40% 98%;
+    --background: 220 20% 98%;
+    --foreground: 222 33% 12%;
 
-    --card: 220 22% 11%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 33% 12%;
 
-    --popover: 220 22% 12%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 33% 12%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 220 25% 6%;
+    --primary: 215 88% 48%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 30% 18%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 16% 94%;
+    --secondary-foreground: 222 33% 12%;
 
-    --muted: 217 30% 20%;
-    --muted-foreground: 215 20% 70%;
+    --muted: 220 16% 94%;
+    --muted-foreground: 220 10% 45%;
 
-    --accent: 268 100% 70%;
-    --accent-foreground: 220 25% 6%;
+    --accent: 205 86% 48%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217 30% 20%;
-    --input: 217 30% 18%;
-    --ring: 217 91% 60%;
+    --border: 220 16% 87%;
+    --input: 220 16% 87%;
+    --ring: 215 88% 48%;
 
     --radius: 0.875rem;
     
-    --success: 142 76% 45%;
-    --warning: 38 92% 55%;
-    --danger: 0 84% 60%;
+    --success: 158 64% 40%;
+    --warning: 38 92% 50%;
+    --danger: 0 72% 51%;
     
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(268 100% 70%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(220 22% 13%) 0%, hsl(220 22% 9%) 100%);
-    --gradient-subtle: linear-gradient(180deg, hsl(220 25% 8%) 0%, hsl(220 25% 6%) 100%);
-    --shadow-glow: 0 8px 32px hsl(217 91% 60% / 0.25);
-    --shadow-card: 0 4px 24px hsl(220 25% 3% / 0.4);
-    --shadow-subtle: 0 2px 12px hsl(220 25% 3% / 0.2);
+    --gradient-primary: linear-gradient(135deg, hsl(214 88% 47%) 0%, hsl(225 84% 56%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 20% 99%) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(220 20% 99%) 0%, hsl(220 16% 94%) 100%);
+    --shadow-glow: 0 8px 28px hsl(215 88% 48% / 0.2);
+    --shadow-card: 0 8px 24px hsl(222 33% 12% / 0.07);
+    --shadow-subtle: 0 2px 10px hsl(222 33% 12% / 0.05);
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 20% 99%;
+    --sidebar-foreground: 222 33% 17%;
+    --sidebar-primary: 215 88% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 16% 94%;
+    --sidebar-accent-foreground: 222 33% 12%;
+    --sidebar-border: 220 16% 87%;
+    --sidebar-ring: 215 88% 48%;
   }
 
   .dark {
-    --background: 220 25% 6%;
-    --foreground: 210 40% 98%;
+    --background: 216 22% 6%;
+    --foreground: 220 20% 97%;
+
+    --card: 216 19% 9%;
+    --card-foreground: 220 20% 97%;
+
+    --popover: 216 19% 9%;
+    --popover-foreground: 220 20% 97%;
+
+    --primary: 215 88% 55%;
+    --primary-foreground: 222 38% 11%;
+
+    --secondary: 216 16% 14%;
+    --secondary-foreground: 220 20% 97%;
+
+    --muted: 216 16% 14%;
+    --muted-foreground: 220 12% 66%;
+
+    --accent: 205 85% 58%;
+    --accent-foreground: 222 38% 11%;
+
+    --border: 216 16% 20%;
+    --input: 216 16% 20%;
+    --ring: 215 88% 55%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(214 90% 50%) 0%, hsl(225 86% 60%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(216 19% 10%) 0%, hsl(216 22% 6%) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(216 19% 9%) 0%, hsl(216 22% 6%) 100%);
+    --shadow-glow: 0 8px 28px hsl(215 88% 55% / 0.22);
+    --shadow-card: 0 12px 32px hsl(216 40% 2% / 0.44);
+    --shadow-subtle: 0 4px 16px hsl(216 40% 2% / 0.3);
+
+    --sidebar-background: 216 22% 6%;
+    --sidebar-foreground: 220 20% 97%;
+    --sidebar-primary: 215 88% 55%;
+    --sidebar-primary-foreground: 222 38% 11%;
+    --sidebar-accent: 216 16% 14%;
+    --sidebar-accent-foreground: 220 20% 97%;
+    --sidebar-border: 216 16% 20%;
+    --sidebar-ring: 215 88% 55%;
   }
 }
 
@@ -79,6 +110,11 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Outfit', sans-serif;
+    background-image: radial-gradient(circle at top, hsl(var(--primary) / 0.05), transparent 32rem);
+    transition: background-color 220ms ease, color 220ms ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -202,3 +238,44 @@ All colors MUST be HSL.
   animation: glowPulse 2s ease-in-out infinite;
 }
 
+/* ── Universal close/X button — works on desktop AND mobile touch ── */
+.x-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background-color: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  transition: background-color 150ms ease, color 150ms ease, transform 100ms ease;
+  flex-shrink: 0;
+  cursor: pointer;
+  /* Removes 300ms tap delay and prevents double-tap zoom so :active fires instantly */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.x-close-btn:hover,
+.x-close-btn:active {
+  background-color: hsl(var(--accent));
+  color: #ffffff;
+  transform: scale(0.95);
+}
+
+/* Size variants */
+.x-close-btn-sm {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.5rem;
+}
+
+.x-close-btn-md {
+  width: 2rem;
+  height: 2rem;
+}
+
+.x-close-btn-lg {
+  width: 2.25rem;
+  height: 2.25rem;
+}

@@ -43,7 +43,7 @@ export const ContextualHelp = ({ title, content, position = 'right' }: Contextua
               <h4 className="font-semibold text-sm">{title}</h4>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-muted-foreground hover:text-foreground"
+                className="x-close-btn x-close-btn-sm"
                 aria-label="Close help"
               >
                 <X className="w-3 h-3" />

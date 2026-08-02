@@ -13,7 +13,7 @@ interface TourStep {
 
 const tourSteps: TourStep[] = [
   {
-    title: 'Welcome to Phishing Analyzer!',
+    title: 'Welcome to EchoMe!',
     description: 'Learn how to protect yourself from phishing attacks with our intelligent analysis tool.',
     icon: Sparkles
   },
@@ -69,7 +69,7 @@ export const OnboardingTour = ({ onComplete }: OnboardingTourProps) => {
             className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
             onClick={handleSkip}
           />
-          
+
           {/* Tour Card */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -83,20 +83,20 @@ export const OnboardingTour = ({ onComplete }: OnboardingTourProps) => {
                 {/* Close Button */}
                 <button
                   onClick={handleSkip}
-                  className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute top-4 right-4 x-close-btn x-close-btn-md"
                   aria-label="Close tour"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
 
                 {/* Icon */}
                 <div className="flex justify-center mb-4">
                   <motion.div
-                    animate={{ 
+                    animate={{
                       rotate: [0, 10, -10, 0],
                       scale: [1, 1.1, 1.1, 1]
                     }}
-                    transition={{ 
+                    transition={{
                       duration: 2,
                       repeat: Infinity,
                       repeatDelay: 1
@@ -125,11 +125,10 @@ export const OnboardingTour = ({ onComplete }: OnboardingTourProps) => {
                         scale: index === currentStep ? 1.2 : 1,
                         opacity: index === currentStep ? 1 : 0.3
                       }}
-                      className={`h-2 rounded-full transition-all ${
-                        index === currentStep 
-                          ? 'w-8 bg-primary' 
+                      className={`h-2 rounded-full transition-all ${index === currentStep
+                          ? 'w-8 bg-primary'
                           : 'w-2 bg-muted-foreground'
-                      }`}
+                        }`}
                     />
                   ))}
                 </div>

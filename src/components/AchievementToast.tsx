@@ -9,10 +9,10 @@ interface AchievementToastProps {
 export const AchievementToast = ({ achievement }: AchievementToastProps) => {
   return (
     <motion.div
-      initial={{ scale: 0, rotate: -180 }}
-      animate={{ scale: 1, rotate: 0 }}
-      exit={{ scale: 0, rotate: 180 }}
-      className="bg-gradient-primary p-4 rounded-lg shadow-glow flex items-center gap-3"
+      initial={{ opacity: 0, x: 24, scale: 0.96 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 24, scale: 0.96 }}
+      className="w-[min(380px,calc(100vw-2rem))] rounded-2xl border border-primary/30 bg-gradient-primary p-4 shadow-xl shadow-primary/25 flex items-center gap-3"
     >
       <div className="text-4xl">
         {typeof achievement.icon === 'string' ? (

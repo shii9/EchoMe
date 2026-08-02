@@ -1,8 +1,9 @@
-const CACHE_NAME = 'phishing-detector-v1';
+const CACHE_NAME = 'phishing-detector-v2';
+const APP_SCOPE = new URL('./', self.registration.scope).href;
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  APP_SCOPE,
+  new URL('index.html', APP_SCOPE).href,
+  new URL('manifest.json', APP_SCOPE).href
 ];
 
 self.addEventListener('install', (event) => {
@@ -13,6 +14,12 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const requestUrl = new URL(event.request.url);
+  const scopeUrl = new URL(APP_SCOPE);
+  if (event.request.method !== 'GET' || requestUrl.origin !== self.location.origin || !requestUrl.pathname.startsWith(scopeUrl.pathname)) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => response || fetch(event.request))

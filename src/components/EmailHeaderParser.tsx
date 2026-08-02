@@ -26,17 +26,17 @@ export const EmailHeaderParser = () => {
     
     // Extract SPF
     const spfMatch = headers.match(/spf=(pass|fail|neutral|none)/i);
-    const spf = spfMatch ? spfMatch[1].toLowerCase() as any : 'none';
+    const spf = spfMatch ? (spfMatch[1].toLowerCase() as HeaderAnalysis['spf']) : 'none';
     if (spf === 'fail') warnings.push('⚠️ SPF check failed - sender may be spoofed');
 
     // Extract DKIM
     const dkimMatch = headers.match(/dkim=(pass|fail|none)/i);
-    const dkim = dkimMatch ? dkimMatch[1].toLowerCase() as any : 'none';
+    const dkim = dkimMatch ? (dkimMatch[1].toLowerCase() as HeaderAnalysis['dkim']) : 'none';
     if (dkim === 'fail') warnings.push('⚠️ DKIM signature invalid');
 
     // Extract DMARC
     const dmarcMatch = headers.match(/dmarc=(pass|fail|none)/i);
-    const dmarc = dmarcMatch ? dmarcMatch[1].toLowerCase() as any : 'none';
+    const dmarc = dmarcMatch ? (dmarcMatch[1].toLowerCase() as HeaderAnalysis['dmarc']) : 'none';
     if (dmarc === 'fail') warnings.push('⚠️ DMARC check failed');
 
     // Extract From

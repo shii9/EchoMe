@@ -1,7 +1,8 @@
-import { Shield, BarChart3, History, Brain, Menu, Home, TrendingUp, UserCheck } from 'lucide-react';
+import { Shield, BarChart3, History, Brain, Menu, Home, TrendingUp, UserCheck, BookOpen, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Link, useLocation } from 'react-router-dom';
+import { ThemeToggle } from './ThemeToggle';
 
 interface NavbarProps {
   onHistoryClick: () => void;
@@ -15,140 +16,151 @@ export const Navbar = ({ onHistoryClick, onQuizClick, onMenuClick }: NavbarProps
   const isStats = location.pathname === '/stats';
   const isTrends = location.pathname === '/trends';
   const isAssessment = location.pathname === '/assessment';
-
-  const handleHistoryClick = () => {
-    onHistoryClick();
-  };
-
-  const handleQuizClick = () => {
-    onQuizClick();
-  };
+  const isBlog = location.pathname === '/blog' || location.pathname.startsWith('/blog/');
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <>
+      <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+        <nav className="pointer-events-auto bg-card/90 backdrop-blur-xl border border-border/60 shadow-2xl rounded-full px-3 py-2 flex items-center justify-between gap-3 transition-all w-full max-w-5xl">
           {/* Logo and Brand */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-primary shadow-glow">
-              <Shield className="w-5 h-5 text-primary-foreground" />
+          <Link to="/" className="flex items-center gap-2 px-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold shadow-sm shadow-primary/30">
+              <Shield className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <div className="hidden sm:block">
-              <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                Phishing Analyzer
+            <div className="hidden sm:flex flex-col">
+              <h1 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-1.5">
+                EchoMe
               </h1>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-2 pl-[0.5in]">
+          <div className="hidden md:flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/">
-                  <Button
-                    variant={isHome ? "default" : "ghost"}
-                    size="sm"
-                    className={`gap-2 ${isHome ? 'shadow-lg shadow-primary/50 animate-glow' : ''}`}
+                  <button
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                      isHome
+                        ? 'bg-gradient-primary text-primary-foreground shadow-md shadow-primary/25'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                    }`}
                   >
                     <Home className="w-4 h-4" />
-                    <span className="hidden lg:inline">Detector</span>
-                  </Button>
+                    <span>Detector</span>
+                  </button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent>Phishing email analyzer</TooltipContent>
+              <TooltipContent>Phishing threat analyzer</TooltipContent>
             </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/stats">
-                  <Button
-                    variant={isStats ? "default" : "ghost"}
-                    size="sm"
-                    className={`gap-2 ${isStats ? 'shadow-lg shadow-primary/50 animate-glow' : ''}`}
+                  <button
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                      isStats
+                        ? 'bg-gradient-primary text-primary-foreground shadow-md shadow-primary/25'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                    }`}
                   >
                     <BarChart3 className="w-4 h-4" />
-                    <span className="hidden lg:inline">Statistics</span>
-                  </Button>
+                    <span>Statistics</span>
+                  </button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent>View your analysis statistics</TooltipContent>
+              <TooltipContent>View analysis statistics</TooltipContent>
             </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/trends">
-                  <Button
-                    variant={isTrends ? "default" : "ghost"}
-                    size="sm"
-                    className={`gap-2 ${isTrends ? 'shadow-lg shadow-primary/50 animate-glow' : ''}`}
+                  <button
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                      isTrends
+                        ? 'bg-gradient-primary text-primary-foreground shadow-md shadow-primary/25'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                    }`}
                   >
                     <TrendingUp className="w-4 h-4" />
-                    <span className="hidden lg:inline">Trends</span>
-                  </Button>
+                    <span>Trends</span>
+                  </button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent>View analysis trends</TooltipContent>
+              <TooltipContent>View threat trends</TooltipContent>
             </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/assessment">
-                  <Button
-                    variant={isAssessment ? "default" : "ghost"}
-                    size="sm"
-                    className={`gap-2 ${isAssessment ? 'shadow-lg shadow-primary/50 animate-glow' : ''}`}
+                  <button
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                      isAssessment
+                        ? 'bg-gradient-primary text-primary-foreground shadow-md shadow-primary/25'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                    }`}
                   >
                     <UserCheck className="w-4 h-4" />
-                    <span className="hidden lg:inline">Assessment</span>
-                  </Button>
+                    <span>Assessment</span>
+                  </button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent>Take security self-assessment</TooltipContent>
+              <TooltipContent>Security self-assessment</TooltipContent>
             </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleHistoryClick}
-                  className="gap-2"
-                >
-                  <History className="w-4 h-4" />
-                  <span className="hidden lg:inline">History</span>
-                </Button>
+                <Link to="/blog">
+                  <button
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                      isBlog
+                        ? 'bg-gradient-primary text-primary-foreground shadow-md shadow-primary/25'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Blog</span>
+                  </button>
+                </Link>
               </TooltipTrigger>
-              <TooltipContent>View analysis history</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleQuizClick}
-                  className="gap-2"
-                >
-                  <Brain className="w-4 h-4" />
-                  <span className="hidden lg:inline">Quiz</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Test your phishing knowledge</TooltipContent>
+              <TooltipContent>Security guides & articles</TooltipContent>
             </Tooltip>
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
+          {/* Right Action Buttons */}
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={onHistoryClick}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border border-border bg-card hover:bg-secondary text-foreground transition-all shadow-sm"
+            >
+              <History className="w-4 h-4 text-muted-foreground" />
+              <span>History</span>
+            </button>
+
+            <button
+              onClick={onQuizClick}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all shadow-sm"
+            >
+              <Zap className="w-4 h-4" />
+              <span>Quiz</span>
+            </button>
+            <ThemeToggle className="ml-1" />
+          </div>
+
+          {/* Mobile Menu Trigger */}
+          <div className="flex md:hidden items-center">
             <Button
-              variant="ghost"
               size="icon"
+              variant="ghost"
+              className="rounded-full w-10 h-10"
               onClick={onMenuClick}
             >
               <Menu className="w-5 h-5" />
             </Button>
           </div>
-        </div>
+        </nav>
       </div>
-    </nav>
+
+    </>
   );
 };

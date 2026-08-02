@@ -1,48 +1,70 @@
-import { motion } from 'framer-motion';
-import { Shield, Github, Twitter, Mail, Heart } from 'lucide-react';
+import { Shield, Github, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const Footer = () => {
   return (
     <footer className="bg-background/80 backdrop-blur-lg border-t border-border mt-auto">
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Brand Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Shield className="w-6 h-6 text-primary" />
-              </div>
-              <span className="font-bold text-lg">Phishing Analyzer</span>
+      <div className="max-w-5xl mx-auto px-4 pt-4 pb-6 sm:pt-5 sm:pb-7">
+        {/* Desktop Layout */}
+        <div className="hidden sm:flex items-center justify-between gap-4 w-full">
+          <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+            <div className="relative p-1 rounded-lg bg-primary/10">
+              <Shield className="w-4 h-4 text-primary" />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Advanced AI-powered phishing analysis to keep you safe from cyber threats.
-            </p>
+            <span className="font-bold text-sm truncate">EchoMe</span>
           </div>
 
-          {/* Made with */}
-          <div className="space-y-4 flex items-center justify-center">
-            <p className="text-xs text-muted-foreground">
-              Made with <Heart className="w-3 h-3 inline text-red-500" /> for cybersecurity
+          <p className="text-[11px] text-muted-foreground/80 text-center flex-1">
+            Advanced AI-powered phishing analysis · Built for cybersecurity &amp; safety
+          </p>
+
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-xs text-muted-foreground/80 mr-1">Connect</span>
+            <a href="https://github.com/shii9" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="icon" className="h-7 w-7 rounded-full hover:bg-primary/10 transition-colors">
+                <Github className="w-3.5 h-3.5" />
+              </Button>
+            </a>
+            <a href="mailto:saadahsan.0754@gmail.com">
+              <Button variant="outline" size="icon" className="h-7 w-7 rounded-full hover:bg-primary/10 transition-colors">
+                <Mail className="w-3.5 h-3.5" />
+              </Button>
+            </a>
+          </div>
+        </div>
+
+        {/* Mobile Layout */}
+        <div className="flex sm:hidden items-center justify-between w-full gap-1">
+          {/* Brand */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="relative p-1 rounded-lg bg-primary/10">
+              <Shield className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="font-bold text-[11px] truncate">EchoMe</span>
+          </div>
+
+          {/* Tagline Container - Both lines strictly share the same center alignment */}
+          <div className="flex flex-col items-center justify-center flex-1 px-1">
+            <p className="text-[9px] xs:text-[10px] text-muted-foreground/90 text-center leading-tight">
+              Advanced AI-powered phishing analysis
+            </p>
+            <p className="text-[9px] xs:text-[10px] text-muted-foreground/70 text-center leading-tight mt-0.5">
+              Built for cybersecurity &amp; safety
             </p>
           </div>
 
           {/* Connect */}
-          <div className="space-y-4 flex items-center justify-end">
-            <div className="flex flex-col items-center gap-2">
-              <span className="font-semibold">Connect</span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="p-2">
-                  <Github className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" className="p-2">
-                  <Twitter className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" className="p-2">
-                  <Mail className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <a href="https://github.com/shii9" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="icon" className="h-6 w-6 rounded-full hover:bg-primary/10 transition-colors">
+                <Github className="w-3.5 h-3.5" />
+              </Button>
+            </a>
+            <a href="mailto:saadahsan.0754@gmail.com">
+              <Button variant="outline" size="icon" className="h-6 w-6 rounded-full hover:bg-primary/10 transition-colors">
+                <Mail className="w-3.5 h-3.5" />
+              </Button>
+            </a>
           </div>
         </div>
       </div>

@@ -1,205 +1,50 @@
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Card } from './ui/card';
-import { AlertTriangle, Info, FileText } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { PhishingResult } from '../types/phishing';
+import { useMemo } from 'react';
+import { FileText } from 'lucide-react';
+import { ThreatHeatMapCard, type HeatMapToken, type ThreatExplanation } from './ThreatHeatMapCard';
+import type { PhishingResult } from '../types/phishing';
 
 interface FileHeatMapProps {
   fileName: string;
   result?: PhishingResult;
 }
 
+const classifyFilePart = (raw: string): HeatMapToken => {
+  const value = raw.trim();
+  const lower = value.toLowerCase();
+  if (!value) return { text: raw, intensity: 0 };
+  if (/\.(?:pdf|docx?|xlsx?|jpg|png)\.(?:exe|scr|js|vbs|bat|cmd)(?:$|\s)/i.test(lower)) return { text: raw, intensity: 4, category: 'double_extension' };
+  if (/\.(?:exe|scr|js|vbs|bat|cmd|pif|jar)$/i.test(lower)) return { text: raw, intensity: 4, category: 'executable' };
+  if (/\.(?:docm|xlsm|pptm)$/i.test(lower)) return { text: raw, intensity: 4, category: 'macro' };
+  if (/\.(?:zip|7z|rar|iso|img|dmg)$/i.test(lower)) return { text: raw, intensity: 3, category: 'archive' };
+  if (/(?:password|login|account|invoice|payment|bank|resume|cv)/i.test(lower)) return { text: raw, intensity: 2, category: 'sensitive_name' };
+  if (lower.length > 24) return { text: raw, intensity: 2, category: 'long_name' };
+  if (/\.[a-z0-9]{2,5}$/i.test(lower)) return { text: raw, intensity: 1, category: 'recognized_file' };
+  return { text: raw, intensity: 0 };
+};
+
+const explanations: Record<string, ThreatExplanation> = {
+  double_extension: { title: 'Double extension', description: 'The name disguises an executable as a document or image.', tips: ['Do not open the file', 'Show file extensions in your file manager', 'Verify the sender through another channel'] },
+  executable: { title: 'Executable file', description: 'Executable files can install software or run code when opened.', tips: ['Avoid opening unexpected executable files', 'Scan the file with trusted security software', 'Download software only from official sources'] },
+  macro: { title: 'Macro-enabled Office file', description: 'Macro-enabled documents can run code when macros are enabled.', tips: ['Keep macros disabled by default', 'Verify unexpected invoices or forms', 'Use protected view and scan the file'] },
+  archive: { title: 'Archive or disk image', description: 'Archives and disk images can conceal executable files.', tips: ['Scan before extracting or mounting', 'Verify the sender and expected contents', 'Do not run files from unknown archives'] },
+  sensitive_name: { title: 'Sensitive-looking filename', description: 'Names involving accounts, payments, or credentials are common social-engineering bait.', tips: ['Confirm the request independently', 'Do not enter credentials into attached forms', 'Check the sender address carefully'] },
+  long_name: { title: 'Unusually long filename', description: 'Long names can hide extensions or confuse the real file type.', tips: ['Inspect the full filename', 'Look for double extensions', 'Use file properties to confirm the type'] },
+  recognized_file: { title: 'Recognized file type', description: 'The filename has a normal-looking extension and no strong local warning was found.', tips: ['Confirm that you expected the file', 'Scan attachments before opening', 'Keep applications and antivirus updated'] }
+};
+
 export const FileHeatMap = ({ fileName, result }: FileHeatMapProps) => {
-  const [selectedThreat, setSelectedThreat] = useState<{ word: string; category: string; } | null>(null);
-
-  const highlightedText = useMemo(() => {
-    if (!fileName) return [];
-
-    const words = fileName.split(/(\s+|[\-_])/);
-    const suspiciousExtensions = ['.exe', '.bat', '.cmd', '.scr', '.pif', '.com', '.vbs', '.js', '.jar', '.zip', '.rar'];
-    const suspiciousNames = ['password', 'bank', 'login', 'account', 'invoice', 'resume', 'cv'];
-
-    return words.map((word, index) => {
-      const lowerWord = word.toLowerCase().trim();
-      let intensity = 0;
-      let category = '';
-
-      if (suspiciousExtensions.some(ext => lowerWord.endsWith(ext))) {
-        intensity = 4;
-        category = 'extension';
-      } else if (suspiciousNames.some(name => lowerWord.includes(name))) {
-        intensity = 3;
-        category = 'name';
-      } else if (lowerWord.length > 20) {
-        intensity = 2;
-        category = 'long';
-      }
-
-      return { word, intensity, category, index };
-    });
-  }, [fileName]);
-
-  const getHighlightClass = (intensity: number, category: string) => {
-    switch (intensity) {
-      case 2:
-        return 'bg-warning/20 text-warning-foreground border-b-2 border-warning';
-      case 3:
-        return 'bg-danger/30 text-danger-foreground border-b-2 border-danger font-semibold';
-      case 4:
-        return 'bg-danger/40 text-danger-foreground border-b-2 border-danger font-bold animate-pulse';
-      default:
-        return '';
-    }
-  };
-
-  const getCategoryLabel = (category: string) => {
-    const labels: Record<string, string> = {
-      extension: 'Suspicious Extension',
-      name: 'Suspicious Name',
-      long: 'Unusual Length'
-    };
-    return labels[category] || '';
-  };
-
-  const suspiciousCount = highlightedText.filter(item => item.intensity > 0).length;
-
-  const getThreatExplanation = (category: string) => {
-    const explanations: Record<string, { title: string; description: string; tips: string[] }> = {
-      extension: {
-        title: 'Suspicious File Extension',
-        description: 'This file extension is commonly associated with malware or executable files.',
-        tips: [
-          'Avoid opening files with .exe, .bat, .js extensions from unknown sources',
-          'Scan files with antivirus before opening',
-          'Verify the sender and context before downloading'
-        ]
-      },
-      name: {
-        title: 'Suspicious File Name',
-        description: 'The file name contains keywords that may indicate phishing or malware.',
-        tips: [
-          'Be cautious with files claiming to be invoices, resumes, or login forms',
-          'Verify the file contents match the claimed purpose',
-          'Contact the sender through official channels to confirm'
-        ]
-      },
-      long: {
-        title: 'Unusually Long Filename',
-        description: 'Very long filenames can be used to hide malicious extensions or confuse users.',
-        tips: [
-          'Check the full filename carefully',
-          'Look for double extensions (e.g., .pdf.exe)',
-          'Use file properties to see the actual extension'
-        ]
-      }
-    };
-    return explanations[category] || { title: 'Unknown Threat', description: '', tips: [] };
-  };
-
+  const tokens = useMemo(() => fileName.split(/(\s+|[_-])/).map(classifyFilePart), [fileName]);
   return (
-    <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <Card className="p-6 bg-gradient-card border-border shadow-xl">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              File Threat Heat Map
-            </h3>
-            {suspiciousCount > 0 && (
-              <div className="flex items-center gap-2 text-warning">
-                <AlertTriangle className="w-4 h-4" />
-                <span className="text-sm font-medium">{suspiciousCount} suspicious elements</span>
-              </div>
-            )}
-          </div>
-
-          <div className="mb-4 flex flex-wrap gap-2 text-xs">
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-warning/20 border-b-2 border-warning rounded" />
-              <span className="text-muted-foreground">Medium Risk</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-danger/30 border-b-2 border-danger rounded" />
-              <span className="text-muted-foreground">High Risk</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-danger/40 border-b-2 border-danger rounded" />
-              <span className="text-muted-foreground">Critical</span>
-            </div>
-          </div>
-
-          <div className="bg-background/50 p-4 rounded-lg border border-border">
-            <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-              {highlightedText.map((item, idx) => (
-                <motion.span
-                  key={idx}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: idx * 0.01 }}
-                  className={`${getHighlightClass(item.intensity, item.category)} transition-all duration-200 rounded px-0.5 ${
-                    item.intensity > 0 ? 'cursor-pointer hover:opacity-80' : ''
-                  }`}
-                  title={item.intensity > 0 ? `Click to learn about: ${getCategoryLabel(item.category)}` : ''}
-                  onClick={() => item.intensity > 0 && setSelectedThreat({ word: item.word, category: item.category })}
-                >
-                  {item.word}
-                </motion.span>
-              ))}
-            </div>
-          </div>
-
-          {suspiciousCount > 0 && (
-            <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/20 flex items-start gap-2">
-              <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-muted-foreground">
-                Click on any highlighted element to learn why it's suspicious
-              </p>
-            </div>
-          )}
-        </Card>
-      </motion.div>
-
-      <Dialog open={!!selectedThreat} onOpenChange={() => setSelectedThreat(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-warning" />
-              {selectedThreat && getThreatExplanation(selectedThreat.category).title}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedThreat && (
-            <div className="space-y-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-medium">Detected element:</p>
-                <p className="text-lg font-bold text-primary mt-1">"{selectedThreat.word}"</p>
-              </div>
-
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  {getThreatExplanation(selectedThreat.category).description}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm font-semibold mb-2">Protection Tips:</p>
-                <ul className="space-y-2">
-                  {getThreatExplanation(selectedThreat.category).tips.map((tip, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <span className="text-primary mt-0.5">•</span>
-                      <span>{tip}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+    <ThreatHeatMapCard
+      title="File Threat Heat Map"
+      icon={<FileText className="h-5 w-5" />}
+      tokens={tokens}
+      result={result}
+      itemLabel="suspicious elements"
+      emptyMessage="Choose a file to inspect its name and extension."
+      getCategoryLabel={category => explanations[category]?.title || 'File indicator'}
+      getThreatExplanation={category => explanations[category] || explanations.recognized_file}
+    />
   );
 };
+

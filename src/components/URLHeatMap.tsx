@@ -1,248 +1,112 @@
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Card } from './ui/card';
-import { AlertTriangle, Info, Link } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { PhishingResult } from '../types/phishing';
+import { useMemo } from 'react';
+import { Link } from 'lucide-react';
+import { ThreatHeatMapCard, type HeatMapToken, type ThreatExplanation } from './ThreatHeatMapCard';
+import type { PhishingResult } from '../types/phishing';
 
 interface URLHeatMapProps {
   urlText: string;
   result?: PhishingResult;
 }
 
-export const URLHeatMap = ({ urlText, result }: URLHeatMapProps) => {
-  const [selectedThreat, setSelectedThreat] = useState<{ word: string; category: string; } | null>(null);
+const suspiciousTld = /\.(?:tk|ml|ga|cf|gq|xyz|top|club|online|site|website|space|click|buzz|work|party|review|download|loan|win)(?::\d+)?(?:[/?#]|$)/i;
+const executable = /\.(?:exe|scr|js|vbs|bat|cmd|pif|jar)(?:[?#]|$)/i;
+const doubleExtension = /\.(?:pdf|docx?|xlsx?|jpg|png)\.(?:exe|scr|js|vbs|bat|cmd)(?:[?#]|$)/i;
+const knownBrand = /(?:paypal|amazon|microsoft|apple|google|facebook|instagram|netflix|linkedin|youtube|whatsapp|telegram|bkash|nagad|daraz)/i;
+const officialBrandHost = /(?:^|\.)(?:paypal\.com|amazon\.com|microsoft\.com|apple\.com|google\.com|facebook\.com|instagram\.com|netflix\.com|linkedin\.com|youtube\.com|whatsapp\.com|telegram\.org|bkash\.com|nagad\.com\.bd|daraz\.com\.bd)(?::\d+)?$/i;
 
-  const highlightedText = useMemo(() => {
-    if (!urlText) return [];
+const classifyUrl = (raw: string): HeatMapToken => {
+  const value = raw.trim();
+  const lower = value.toLowerCase();
+  const withoutScheme = lower.replace(/^[a-z][a-z\d+.-]*:\/\//i, '');
+  const host = withoutScheme.split(/[/?#]/, 1)[0].replace(/:\d+$/, '');
 
-    const urls = urlText.split('\n').filter(line => line.trim());
-    const allWords: Array<{ word: string; intensity: number; category: string; index: number }> = [];
+  if (!value) return { text: raw, intensity: 0 };
+  if (doubleExtension.test(lower)) return { text: raw, intensity: 4, category: 'double_extension' };
+  if (executable.test(lower)) return { text: raw, intensity: 4, category: 'executable' };
+  if (host.includes('@')) return { text: raw, intensity: 4, category: 'userinfo' };
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(host)) return { text: raw, intensity: 4, category: 'ip' };
+  if (/(?:^|\.)xn--|[^\x00-\x7F]/i.test(host)) return { text: raw, intensity: 4, category: 'homograph' };
+  if (knownBrand.test(host) && !officialBrandHost.test(host)) return { text: raw, intensity: 4, category: 'brand_impersonation' };
+  if (/(?:bit\.ly|tinyurl\.com|goo\.gl|ow\.ly|t\.co|is\.gd|cutt\.ly|shorturl\.at)/i.test(host)) return { text: raw, intensity: 3, category: 'shortener' };
+  if (suspiciousTld.test(host)) return { text: raw, intensity: 3, category: 'suspicious_tld' };
+  if (/(?:login|signin|sign-in|verify|password|reset|unlock|auth|token|otp)/i.test(lower)) return { text: raw, intensity: 3, category: 'sensitive_params' };
+  if (/(?:redirect|return|callback|next|url)=/i.test(lower)) return { text: raw, intensity: 3, category: 'redirect' };
+  if (/^http:\/\//i.test(lower)) return { text: raw, intensity: 2, category: 'unencrypted' };
+  if (value.length > 80) return { text: raw, intensity: 2, category: 'long_url' };
+  if (/^(?:https?:\/\/|www\.)/i.test(value) || /^[a-z0-9.-]+\.[a-z]{2,}(?:\/|$)/i.test(value)) return { text: raw, intensity: 1, category: 'valid_url' };
+  return { text: raw, intensity: 0 };
+};
 
-    urls.forEach((url, urlIndex) => {
-      const words = url.split(/(\s+|[:\/\.\-_?&=#])/);
-      words.forEach((word, wordIndex) => {
-        const lowerWord = word.toLowerCase().trim();
-        let intensity = 0;
-        let category = '';
+const tokenizeUrl = (raw: string): HeatMapToken[] => {
+  const base = classifyUrl(raw);
+  const value = raw;
+  if (!value.trim() || base.intensity === 0) return [base];
 
-        if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(word)) {
-          intensity = 4;
-          category = 'ip';
-        } else if (/(bit\.ly|tinyurl|goo\.gl|ow\.ly|t\.co)/.test(lowerWord)) {
-          intensity = 3;
-          category = 'shortener';
-        } else if (/\.(tk|ml|ga|cf|gq|xyz|top|club|online|site)$/.test(lowerWord)) {
-          intensity = 3;
-          category = 'suspicious_tld';
-        } else if (lowerWord.includes('login') || lowerWord.includes('password') || lowerWord.includes('verify')) {
-          intensity = 3;
-          category = 'sensitive_params';
-        } else if (word.length > 50) {
-          intensity = 2;
-          category = 'long_url';
-        }
-
-        allWords.push({ word, intensity, category, index: urlIndex * 100 + wordIndex });
-      });
-    });
-
-    return allWords;
-  }, [urlText]);
-
-  const getHighlightClass = (intensity: number, category: string) => {
-    switch (intensity) {
-      case 1:
-        return 'bg-warning/20 text-warning-foreground border-b-2 border-warning';
-      case 2:
-        return 'bg-warning/30 text-warning-foreground border-b-2 border-warning font-semibold';
-      case 3:
-        return 'bg-danger/30 text-danger-foreground border-b-2 border-danger font-semibold';
-      case 4:
-        return 'bg-danger/40 text-danger-foreground border-b-2 border-danger font-bold animate-pulse';
-      default:
-        return '';
+  const matches: Array<{ start: number; end: number; intensity: HeatMapToken['intensity']; category: string }> = [];
+  const addMatch = (pattern: RegExp, intensity: HeatMapToken['intensity'], category: string) => {
+    const match = pattern.exec(value);
+    if (match && typeof match.index === 'number') {
+      matches.push({ start: match.index, end: match.index + match[0].length, intensity, category });
     }
   };
 
-  const getCategoryLabel = (category: string) => {
-    const labels: Record<string, string> = {
-      ip: 'IP-based URL',
-      shortener: 'URL Shortener',
-      suspicious_tld: 'Suspicious TLD',
-      sensitive_params: 'Sensitive Parameters',
-      long_url: 'Unusually Long URL'
-    };
-    return labels[category] || '';
-  };
+  addMatch(/\.(?:pdf|docx?|xlsx?|jpg|png)\.(?:exe|scr|js|vbs|bat|cmd)(?=[?#]|$)/i, 4, 'double_extension');
+  addMatch(/\.(?:exe|scr|js|vbs|bat|cmd|pif|jar)(?=[?#]|$)/i, 4, 'executable');
+  addMatch(/(?:\d{1,3}\.){3}\d{1,3}/, 4, 'ip');
+  addMatch(/[^/\s@]+@/i, 4, 'userinfo');
+  addMatch(/(?:^|\/)(?:xn--[a-z0-9-]+|[a-z0-9-]*[^\x00-\x7F][a-z0-9-]*)/i, 4, 'homograph');
+  if (base.category === 'brand_impersonation') {
+    addMatch(/(?:paypal|amazon|microsoft|apple|google|facebook|instagram|netflix|linkedin|youtube|whatsapp|telegram|bkash|nagad|daraz)/i, 4, 'brand_impersonation');
+  }
+  addMatch(/(?:bit\.ly|tinyurl\.com|goo\.gl|ow\.ly|t\.co|is\.gd|cutt\.ly|shorturl\.at)/i, 3, 'shortener');
+  addMatch(/\.(?:tk|ml|ga|cf|gq|xyz|top|club|online|site|website|space|click|buzz|work|party|review|download|loan|win)(?::\d+)?(?=[/?#]|$)/i, 3, 'suspicious_tld');
+  addMatch(/(?:login|signin|sign-in|verify|password|reset|unlock|auth|token|otp)/i, 3, 'sensitive_params');
+  addMatch(/(?:redirect|return|callback|next|url)(?==)/i, 3, 'redirect');
+  addMatch(/^http:\/\//i, 2, 'unencrypted');
 
-  const suspiciousCount = highlightedText.filter(item => item.intensity > 0).length;
+  if (matches.length === 0) return [{ ...base, intensity: Math.min(base.intensity, 2) as HeatMapToken['intensity'] }];
 
-  const getThreatExplanation = (category: string) => {
-    const explanations: Record<string, { title: string; description: string; tips: string[] }> = {
-      ip: {
-        title: 'IP-based URL',
-        description: 'URLs using IP addresses instead of domain names are highly suspicious.',
-        tips: [
-          'Legitimate websites use domain names, not IP addresses',
-          'Hover over links to check the actual destination',
-          'Avoid clicking IP-based links from emails or messages'
-        ]
-      },
-      shortener: {
-        title: 'URL Shortener Service',
-        description: 'Shortened URLs hide the real destination and are commonly used in phishing.',
-        tips: [
-          'Use URL expanders to see the full destination',
-          'Avoid shortened URLs from unknown sources',
-          'Check the domain before clicking'
-        ]
-      },
-      suspicious_tld: {
-        title: 'Suspicious Top-Level Domain',
-        description: 'Free or unusual TLDs are often used by malicious websites.',
-        tips: [
-          'Stick to .com, .org, .edu for trusted sites',
-          'Research unfamiliar TLDs before visiting',
-          'Be extra cautious with new or free TLDs'
-        ]
-      },
-      sensitive_params: {
-        title: 'Sensitive URL Parameters',
-        description: 'URLs containing login or password parameters are dangerous.',
-        tips: [
-          'Never enter credentials on URLs with sensitive parameters',
-          'Use official login pages instead of links',
-          'Check for HTTPS and verify the domain'
-        ]
-      },
-      long_url: {
-        title: 'Unusually Long URL',
-        description: 'Very long URLs can hide malicious content or tracking parameters.',
-        tips: [
-          'Check the domain carefully in long URLs',
-          'Look for suspicious parameters or redirects',
-          'Use URL scanners for unknown long links'
-        ]
-      }
-    };
-    return explanations[category] || { title: 'Unknown Threat', description: '', tips: [] };
-  };
+  matches.sort((a, b) => a.start - b.start || b.end - a.end);
+  const segments: HeatMapToken[] = [];
+  let cursor = 0;
+  for (const match of matches) {
+    if (match.start < cursor) continue;
+    if (match.start > cursor) segments.push({ text: value.slice(cursor, match.start), intensity: 1, category: 'valid_url' });
+    segments.push({ text: value.slice(match.start, match.end), intensity: match.intensity, category: match.category });
+    cursor = match.end;
+  }
+  if (cursor < value.length) segments.push({ text: value.slice(cursor), intensity: 1, category: 'valid_url' });
+  return segments;
+};
 
+const explanations: Record<string, ThreatExplanation> = {
+  double_extension: { title: 'Double extension', description: 'The download uses a document-looking extension before an executable extension, a common disguise.', tips: ['Do not open the file', 'Verify the sender through another channel', 'Scan downloads before opening them'] },
+  executable: { title: 'Executable download', description: 'Executable files can install software or run code when opened.', tips: ['Avoid opening executable downloads from messages', 'Use a trusted malware scanner', 'Get software from the official publisher'] },
+  userinfo: { title: 'Hidden destination before @', description: 'Text before @ can look trustworthy while the browser connects to the host after it.', tips: ['Read the hostname after @', 'Do not rely on the visible brand name', 'Close the page if the destination is unexpected'] },
+  ip: { title: 'IP-based URL', description: 'The link uses an IP address instead of a recognizable domain, which is unusual for trusted services.', tips: ['Verify the destination independently', 'Avoid login pages hosted on raw IPs', 'Use the company’s official site directly'] },
+  homograph: { title: 'Lookalike hostname', description: 'Punycode or non-ASCII characters can make a fake hostname resemble a trusted one.', tips: ['Check the exact spelling of the host', 'Avoid unfamiliar internationalized domains', 'Open the official site from a saved bookmark'] },
+  brand_impersonation: { title: 'Brand impersonation', description: 'A known brand appears on a hostname that is not owned by that brand.', tips: ['Check the registrable domain at the end of the hostname', 'Never sign in from an unexpected link', 'Use the official app or website'] },
+  shortener: { title: 'URL shortener', description: 'A shortened link hides the final destination and makes verification harder.', tips: ['Expand the link before opening it', 'Be cautious with shortened links from unknown senders', 'Verify the sender and context'] },
+  suspicious_tld: { title: 'Higher-risk domain extension', description: 'Some free or frequently abused extensions deserve extra verification.', tips: ['Check the organization behind the domain', 'Do not treat HTTPS alone as proof of safety', 'Use a reputation lookup for important links'] },
+  sensitive_params: { title: 'Credential-related path', description: 'The link appears designed for login, verification, password reset, or token collection.', tips: ['Navigate to the official site manually', 'Never enter passwords from an email link', 'Check the hostname before continuing'] },
+  redirect: { title: 'Redirect parameter', description: 'Redirect parameters can send you to a different destination after the first page.', tips: ['Inspect the full URL carefully', 'Avoid entering credentials after redirects', 'Use a trusted URL scanner'] },
+  unencrypted: { title: 'Unencrypted HTTP', description: 'HTTP does not protect the connection in transit and should not be used for sensitive actions.', tips: ['Prefer HTTPS', 'Never submit passwords over HTTP', 'Verify the domain independently'] },
+  long_url: { title: 'Unusually long URL', description: 'Long links can hide redirects, encoded content, or confusing paths.', tips: ['Read the hostname first', 'Look for redirect and tracking parameters', 'Use a trusted scanner for unknown links'] },
+  valid_url: { title: 'Low-risk URL structure', description: 'This link has a recognizable URL structure and no strong local warning was found.', tips: ['Confirm the sender and context', 'Check the hostname before clicking', 'HTTPS is helpful but not proof by itself'] }
+};
+
+export const URLHeatMap = ({ urlText, result }: URLHeatMapProps) => {
+  const tokens = useMemo(() => urlText.split(/(\s+)/).flatMap(tokenizeUrl), [urlText]);
   return (
-    <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <Card className="p-6 bg-gradient-card border-border shadow-xl">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Link className="w-5 h-5" />
-              URL Threat Heat Map
-            </h3>
-            {suspiciousCount > 0 && (
-              <div className="flex items-center gap-2 text-warning">
-                <AlertTriangle className="w-4 h-4" />
-                <span className="text-sm font-medium">{suspiciousCount} suspicious elements</span>
-              </div>
-            )}
-          </div>
-
-          <div className="mb-4 flex flex-wrap gap-2 text-xs">
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-warning/20 border-b-2 border-warning rounded" />
-              <span className="text-muted-foreground">Low Risk</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-warning/30 border-b-2 border-warning rounded" />
-              <span className="text-muted-foreground">Medium Risk</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-danger/30 border-b-2 border-danger rounded" />
-              <span className="text-muted-foreground">High Risk</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-danger/40 border-b-2 border-danger rounded" />
-              <span className="text-muted-foreground">Critical</span>
-            </div>
-          </div>
-
-          <div className="bg-background/50 p-4 rounded-lg border border-border max-h-[300px] overflow-y-auto">
-            <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-              {urlText.split('\n').map((url, urlIndex) => (
-                <div key={urlIndex} className="mb-2">
-                  {url.split(/(\s+|[:\/\.\-_?&=#])/).map((word, wordIndex) => {
-                    const item = highlightedText.find(h => h.index === urlIndex * 100 + wordIndex);
-                    return (
-                      <motion.span
-                        key={wordIndex}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: (urlIndex * 100 + wordIndex) * 0.01 }}
-                        className={`${item ? getHighlightClass(item.intensity, item.category) : ''} transition-all duration-200 rounded px-0.5 ${
-                          item && item.intensity > 0 ? 'cursor-pointer hover:opacity-80' : ''
-                        }`}
-                        title={item && item.intensity > 0 ? `Click to learn about: ${getCategoryLabel(item.category)}` : ''}
-                        onClick={() => item && item.intensity > 0 && setSelectedThreat({ word: item.word, category: item.category })}
-                      >
-                        {word}
-                      </motion.span>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {suspiciousCount > 0 && (
-            <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/20 flex items-start gap-2">
-              <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-muted-foreground">
-                Click on any highlighted element to learn why it's suspicious
-              </p>
-            </div>
-          )}
-        </Card>
-      </motion.div>
-
-      <Dialog open={!!selectedThreat} onOpenChange={() => setSelectedThreat(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-warning" />
-              {selectedThreat && getThreatExplanation(selectedThreat.category).title}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedThreat && (
-            <div className="space-y-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-medium">Detected element:</p>
-                <p className="text-lg font-bold text-primary mt-1">"{selectedThreat.word}"</p>
-              </div>
-
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  {getThreatExplanation(selectedThreat.category).description}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm font-semibold mb-2">Protection Tips:</p>
-                <ul className="space-y-2">
-                  {getThreatExplanation(selectedThreat.category).tips.map((tip, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <span className="text-primary mt-0.5">•</span>
-                      <span>{tip}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+    <ThreatHeatMapCard
+      title="URL Threat Heat Map"
+      icon={<Link className="h-5 w-5" />}
+      tokens={tokens}
+      result={result}
+      itemLabel="suspicious elements"
+      emptyMessage="Enter a URL to inspect its structure."
+      getCategoryLabel={category => explanations[category]?.title || 'URL indicator'}
+      getThreatExplanation={category => explanations[category] || explanations.valid_url}
+    />
   );
 };

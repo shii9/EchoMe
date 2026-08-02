@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BarChart3, History, Brain, MessageSquare, FileText, TrendingUp, Home } from 'lucide-react';
+import { X, BarChart3, History, MessageSquare, FileText, TrendingUp, Home, BookOpen, Zap, FileJson, UserCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { Link, useLocation } from 'react-router-dom';
+import { ThemeToggle } from './ThemeToggle';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface MobileMenuProps {
   onQuizClick: () => void;
   onAIClick: () => void;
   onExportClick: () => void;
+  onAPIKeysClick: () => void;
   historyLength: number;
 }
 
@@ -20,6 +22,7 @@ export const MobileMenu = ({
   onQuizClick,
   onAIClick,
   onExportClick,
+  onAPIKeysClick,
   historyLength
 }: MobileMenuProps) => {
   const location = useLocation();
@@ -28,13 +31,16 @@ export const MobileMenu = ({
     { icon: Home, label: 'Detector', to: '/' },
     { icon: BarChart3, label: 'Statistics', to: '/stats' },
     { icon: TrendingUp, label: 'Trends', to: '/trends' },
+    { icon: UserCheck, label: 'Assessment', to: '/assessment' },
+    { icon: BookOpen, label: 'Blog', to: '/blog' },
   ];
 
   const actionItems = [
     { icon: History, label: 'History', onClick: onHistoryClick },
-    { icon: Brain, label: 'Quiz Mode', onClick: onQuizClick },
+    { icon: Zap, label: 'Quiz Mode', onClick: onQuizClick },
     { icon: MessageSquare, label: 'AI Assistant', onClick: onAIClick },
-    { icon: FileText, label: 'Export CSV', onClick: onExportClick, disabled: historyLength === 0 }
+    { icon: FileText, label: 'Export CSV', onClick: onExportClick, disabled: historyLength === 0 },
+    { icon: FileJson, label: 'API Keys', onClick: onAPIKeysClick },
   ];
 
   const handleItemClick = (onClick: () => void) => {
@@ -67,14 +73,16 @@ export const MobileMenu = ({
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-border">
-                <h2 className="text-lg font-semibold">Menu</h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-semibold">Menu</h2>
+                  <ThemeToggle />
+                </div>
+                <button
                   onClick={onClose}
+                  className="x-close-btn x-close-btn-md"
                 >
-                  <X className="w-5 h-5" />
-                </Button>
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
               {/* Menu Items */}
@@ -96,9 +104,8 @@ export const MobileMenu = ({
                           <Link to={item.to} onClick={onClose}>
                             <Button
                               variant={isActive ? "default" : "ghost"}
-                              className={`w-full justify-start gap-3 h-12 ${
-                                isActive ? 'shadow-lg shadow-primary/50 animate-glow' : ''
-                              }`}
+                              className={`w-full justify-start gap-3 h-12 ${isActive ? 'shadow-lg shadow-primary/50 animate-glow' : ''
+                                }`}
                             >
                               <Icon className="w-5 h-5" />
                               <span>{item.label}</span>
@@ -123,9 +130,9 @@ export const MobileMenu = ({
                         >
                           <Button
                             variant="ghost"
-                            className="w-full justify-start gap-3 h-12"
+                            className={`w-full justify-start gap-3 h-12 ${'admin' in item && item.admin ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10' : ''}`}
                             onClick={() => handleItemClick(item.onClick)}
-                            disabled={item.disabled}
+                            disabled={'disabled' in item ? item.disabled : false}
                           >
                             <Icon className="w-5 h-5" />
                             <span>{item.label}</span>

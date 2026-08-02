@@ -1,265 +1,59 @@
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Card } from './ui/card';
-import { AlertTriangle, Info } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { PhishingResult } from '../types/phishing';
+import { useMemo } from 'react';
+import { Mail } from 'lucide-react';
+import { ThreatHeatMapCard, type HeatMapToken, type ThreatExplanation } from './ThreatHeatMapCard';
+import type { PhishingResult } from '../types/phishing';
 
 interface EmailHeatMapProps {
   emailText: string;
   result?: PhishingResult;
 }
 
+const classifyEmailToken = (raw: string): HeatMapToken => {
+  const value = raw.trim();
+  const lower = value.toLowerCase();
+  if (!value) return { text: raw, intensity: 0 };
+  if (/\.(?:pdf|docx?|xlsx?|jpg|png)\.(?:exe|scr|js|vbs|bat|cmd)(?:$|\s)/i.test(lower)) return { text: raw, intensity: 4, category: 'double_extension' };
+  if (/(?:https?:\/\/|www\.|(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/|$))/i.test(value)) {
+    if (/(?:@|\.(?:exe|scr|js|vbs|bat|cmd)(?:$|[?#]))/i.test(lower)) return { text: raw, intensity: 4, category: 'suspicious_link' };
+    if (/(?:login|signin|verify|password|token|otp|redirect)/i.test(lower)) return { text: raw, intensity: 3, category: 'suspicious_link' };
+    return { text: raw, intensity: 1, category: 'link' };
+  }
+  if (/(?:password|passcode|pin|otp|ssn|social security|credit card|card number|cvv|bank account|nid)/i.test(lower)) return { text: raw, intensity: 4, category: 'sensitive' };
+  if (/(?:suspended|locked|unauthorized|security alert|account alert|threat|warning)/i.test(lower)) return { text: raw, intensity: 3, category: 'threat' };
+  if (/(?:urgent|immediately|act now|expires|asap|within \d+ hours?)/i.test(lower)) return { text: raw, intensity: 2, category: 'urgency' };
+  if (/(?:winner|prize|lottery|inheritance|congratulations|claim|reward|bonus|gift)/i.test(lower)) return { text: raw, intensity: 2, category: 'prize' };
+  if (/(?:click|download|open|verify|confirm|update|login|sign-in)/i.test(lower)) return { text: raw, intensity: 2, category: 'action' };
+  if (/(?:paypal|amazon|microsoft|apple|google|netflix|bkash|nagad|daraz|bank)/i.test(lower)) return { text: raw, intensity: 1, category: 'brand' };
+  if (/^[A-Z]{3,}$/.test(value.replace(/[^A-Z]/g, ''))) return { text: raw, intensity: 2, category: 'caps' };
+  return { text: raw, intensity: 0 };
+};
+
+const explanations: Record<string, ThreatExplanation> = {
+  double_extension: { title: 'Double extension', description: 'The attachment name disguises an executable as a document or image.', tips: ['Do not open it', 'Verify the sender independently', 'Scan attachments before opening'] },
+  suspicious_link: { title: 'Suspicious link', description: 'This link contains a structure or action commonly associated with credential theft or malicious downloads.', tips: ['Do not click it', 'Open the official site manually', 'Inspect the hostname before entering information'] },
+  sensitive: { title: 'Sensitive information', description: 'The message references credentials, identity data, or payment information.', tips: ['Never share passwords or PINs by email', 'Use official support channels', 'Treat unexpected requests as suspicious'] },
+  threat: { title: 'Threatening language', description: 'Threats and account warnings can pressure recipients into acting without verifying the message.', tips: ['Pause before responding', 'Check the account directly through the official app', 'Contact the organization using a known number'] },
+  urgency: { title: 'Urgency tactic', description: 'Urgent wording is often used to reduce the time available for careful verification.', tips: ['Do not let deadlines pressure you', 'Verify through a trusted channel', 'Look for independent confirmation'] },
+  prize: { title: 'Prize or reward bait', description: 'Unexpected prizes and rewards are common social-engineering lures.', tips: ['Do not pay to claim an unexpected prize', 'Do not share identity or banking details', 'Consider whether you entered the contest'] },
+  action: { title: 'Call to action', description: 'The message asks you to click, download, verify, or update something.', tips: ['Navigate to the official site yourself', 'Inspect attachments before opening', 'Verify the request with the sender'] },
+  brand: { title: 'Brand mention', description: 'A brand name is present. A brand mention alone is not proof of phishing, so verify the surrounding context.', tips: ['Check the sender domain', 'Use official bookmarks', 'Do not rely on logos or names alone'] },
+  caps: { title: 'All-caps wording', description: 'Excessive capitalization can be used to create pressure, although it is not proof by itself.', tips: ['Focus on the sender and requested action', 'Verify urgent claims independently', 'Treat it as a supporting signal only'] },
+  link: { title: 'Low-risk link structure', description: 'A link was found without a strong local warning. Continue to verify the destination and context.', tips: ['Check the hostname', 'Confirm the sender', 'Use official sites for sensitive actions'] }
+};
+
 export const EmailHeatMap = ({ emailText, result }: EmailHeatMapProps) => {
-  const [selectedThreat, setSelectedThreat] = useState<{ word: string; category: string; } | null>(null);
-
-  const highlightedText = useMemo(() => {
-    if (!emailText) return [];
-
-    const words = emailText.split(/(\s+)/);
-    const urgentKeywords = ['urgent', 'immediately', 'action required', 'verify now', 'within 24 hours', 'expires', 'suspended', 'locked', 'act now', 'asap'];
-    const prizeKeywords = ['winner', 'prize', 'congratulations', 'lottery', 'inheritance', 'millions', 'selected', 'claim'];
-    const threatKeywords = ['account suspended', 'verify account', 'unusual activity', 'security alert', 'confirm identity', 'unauthorized', 'verify your account', 'confirm your account'];
-    const sensitiveKeywords = ['password', 'ssn', 'credit card', 'bank account', 'pin', 'cvv', 'social security', 'otp', 'token'];
-    const actionKeywords = ['click', 'click here', 'open', 'download', 'verify', 'confirm', 'update', 'login', 'sign in'];
-    const brandKeywords = [
-      'paypal','amazon','microsoft','apple','google','netflix','bank','paytm','aadhaar','uidai','gmail','outlook',
-      // Bangladeshi/local brands and services
-      'bkash','nagad','rocket','sonali','brac','dbbl','dutch bangla','city bank','janata bank','islami bank','robi','banglalink','daraz','pathao','shohoz','chaldal'
-    ];
-
-    return words.map((word, index) => {
-      const lowerWord = word.toLowerCase().trim();
-      let intensity = 0;
-      let category = '';
-
-      if (urgentKeywords.some(kw => lowerWord.includes(kw))) {
-        intensity = Math.max(intensity, 1);
-        category = 'urgent';
-      }
-      if (prizeKeywords.some(kw => lowerWord.includes(kw))) {
-        intensity = Math.max(intensity, 2);
-        category = 'prize';
-      }
-      if (threatKeywords.some(kw => lowerWord.includes(kw))) {
-        intensity = Math.max(intensity, 3);
-        category = 'threat';
-      }
-      if (sensitiveKeywords.some(kw => lowerWord.includes(kw))) {
-        intensity = Math.max(intensity, 4);
-        category = 'sensitive';
-      }
-      if (actionKeywords.some(kw => lowerWord.includes(kw))) {
-        intensity = Math.max(intensity, 2);
-        category = 'action';
-      }
-      if (brandKeywords.some(kw => lowerWord.includes(kw))) {
-        intensity = Math.max(intensity, 2);
-        category = 'brand';
-      }
-
-      // Mark ALL-CAPS suspicious tokens (e.g., KYC, IMPORTANT)
-      if (/^[A-Z]{3,}$/.test(word.replace(/[^A-Z]/g, ''))) {
-        intensity = Math.max(intensity, 2);
-        category = 'caps';
-      }
-
-      // Check for URLs (including bare domain patterns)
-      if (/https?:\/\/|www\.|bit\.ly|tinyurl|\.[a-z]{2,3}\b/i.test(word)) {
-        intensity = Math.max(intensity, 3);
-        category = 'url';
-      }
-
-      return { word, intensity, category, index };
-    });
-  }, [emailText]);
-
-  const getHighlightClass = (intensity: number, category: string) => {
-    switch (intensity) {
-      case 1:
-        return 'bg-warning/20 text-warning-foreground border-b-2 border-warning';
-      case 2:
-        return 'bg-warning/30 text-warning-foreground border-b-2 border-warning font-semibold';
-      case 3:
-        return 'bg-danger/30 text-danger-foreground border-b-2 border-danger font-semibold';
-      case 4:
-        return 'bg-danger/40 text-danger-foreground border-b-2 border-danger font-bold animate-pulse';
-      default:
-        return '';
-    }
-  };
-
-  const getCategoryLabel = (category: string) => {
-    const labels: Record<string, string> = {
-      urgent: 'Urgency',
-      prize: 'Prize/Reward',
-      threat: 'Threat',
-      sensitive: 'Sensitive Data',
-      url: 'Suspicious Link',
-      action: 'Call to Action',
-      brand: 'Brand Mention',
-      caps: 'All-caps'
-    };
-    return labels[category] || '';
-  };
-
-  const suspiciousCount = highlightedText.filter(item => item.intensity > 0).length;
-
-  const getThreatExplanation = (category: string) => {
-    const explanations: Record<string, { title: string; description: string; tips: string[] }> = {
-      urgent: {
-        title: 'Urgency Tactics',
-        description: 'Phishers create false urgency to pressure you into acting without thinking.',
-        tips: [
-          'Legitimate companies rarely demand immediate action',
-          'Take time to verify the request through official channels',
-          'Be suspicious of countdown timers or threats of account closure'
-        ]
-      },
-      prize: {
-        title: 'Prize/Reward Scams',
-        description: 'Unexpected prizes or rewards are common phishing baits.',
-        tips: [
-          'You can\'t win a contest you didn\'t enter',
-          'Legitimate prizes don\'t require personal information upfront',
-          'Research the company before responding'
-        ]
-      },
-      threat: {
-        title: 'Threatening Language',
-        description: 'Scammers use threats to create panic and bypass your judgment.',
-        tips: [
-          'Banks don\'t threaten customers via email',
-          'Verify account issues by logging in directly (not through email links)',
-          'Contact the company through their official website'
-        ]
-      },
-      sensitive: {
-        title: 'Sensitive Data Request',
-        description: 'Requests for passwords, SSN, or financial info are major red flags.',
-        tips: [
-          'Never share passwords or PINs via email',
-          'Legitimate companies already have your information',
-          'Use secure channels for sensitive communications'
-        ]
-      },
-      url: {
-        title: 'Suspicious Link',
-        description: 'Malicious URLs often use disguises or suspicious patterns.',
-        tips: [
-          'Hover over links to see the real destination',
-          'Check for misspellings in domain names',
-          'Avoid clicking shortened URLs from unknown sources'
-        ]
-      }
-    };
-    return explanations[category] || { title: 'Unknown Threat', description: '', tips: [] };
-  };
-
+  const tokens = useMemo(() => emailText.split(/(\s+)/).map(classifyEmailToken), [emailText]);
   return (
-    <>
-      <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <Card className="p-6 bg-gradient-card border-border shadow-xl">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-foreground">Email Threat Heat Map</h3>
-          {suspiciousCount > 0 && (
-            <div className="flex items-center gap-2 text-warning">
-              <AlertTriangle className="w-4 h-4" />
-              <span className="text-sm font-medium">{suspiciousCount} suspicious terms</span>
-            </div>
-          )}
-        </div>
-
-        <div className="mb-4 flex flex-wrap gap-2 text-xs">
-          <div className="flex items-center gap-1">
-            <div className="w-4 h-4 bg-warning/20 border-b-2 border-warning rounded" />
-            <span className="text-muted-foreground">Low Risk</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-4 h-4 bg-warning/30 border-b-2 border-warning rounded" />
-            <span className="text-muted-foreground">Medium Risk</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-4 h-4 bg-danger/30 border-b-2 border-danger rounded" />
-            <span className="text-muted-foreground">High Risk</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-4 h-4 bg-danger/40 border-b-2 border-danger rounded" />
-            <span className="text-muted-foreground">Critical</span>
-          </div>
-        </div>
-
-        <div className="bg-background/50 p-4 rounded-lg border border-border max-h-[300px] overflow-y-auto">
-          <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-            {highlightedText.map((item, idx) => (
-              <motion.span
-                key={idx}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: idx * 0.01 }}
-                className={`${getHighlightClass(item.intensity, item.category)} transition-all duration-200 rounded px-0.5 ${
-                  item.intensity > 0 ? 'cursor-pointer hover:opacity-80' : ''
-                }`}
-                title={item.intensity > 0 ? `Click to learn about: ${getCategoryLabel(item.category)}` : ''}
-                onClick={() => item.intensity > 0 && setSelectedThreat({ word: item.word, category: item.category })}
-              >
-                {item.word}
-              </motion.span>
-            ))}
-          </div>
-        </div>
-
-        {suspiciousCount > 0 && (
-          <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/20 flex items-start gap-2">
-            <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-muted-foreground">
-              Click on any highlighted term to learn why it's suspicious
-            </p>
-          </div>
-        )}
-      </Card>
-    </motion.div>
-
-      <Dialog open={!!selectedThreat} onOpenChange={() => setSelectedThreat(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-warning" />
-              {selectedThreat && getThreatExplanation(selectedThreat.category).title}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedThreat && (
-            <div className="space-y-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-medium">Detected term:</p>
-                <p className="text-lg font-bold text-primary mt-1">"{selectedThreat.word}"</p>
-              </div>
-              
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  {getThreatExplanation(selectedThreat.category).description}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm font-semibold mb-2">Protection Tips:</p>
-                <ul className="space-y-2">
-                  {getThreatExplanation(selectedThreat.category).tips.map((tip, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <span className="text-primary mt-0.5">•</span>
-                      <span>{tip}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+    <ThreatHeatMapCard
+      title="Email Threat Heat Map"
+      icon={<Mail className="h-5 w-5" />}
+      tokens={tokens}
+      result={result}
+      itemLabel="suspicious elements"
+      emptyMessage="Paste an email to inspect its language, links, and requests."
+      getCategoryLabel={category => explanations[category]?.title || 'Email indicator'}
+      getThreatExplanation={category => explanations[category] || explanations.link}
+    />
   );
 };
+

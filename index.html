@@ -5,13 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Primary Meta Tags -->
-    <title>Ultimate Phishing Analyzer - AI-Powered Security Analysis | Free Tool</title>
-    <meta name="title" content="Ultimate Phishing Analyzer - AI-Powered Security Analysis | Free Tool" />
+    <title>EchoMe - AI-Powered Security Analysis | Free Tool</title>
+    <meta name="title" content="EchoMe - AI-Powered Security Analysis | Free Tool" />
     <meta name="description" content="Detect phishing emails instantly with our advanced AI-powered tool. Analyze suspicious emails, check URLs, parse headers (SPF/DKIM/DMARC), and protect yourself from cyber threats. Free multilingual support." />
     <meta name="keywords" content="phishing analyzer, email security, cyber security, malware detection, email analysis, SPF DKIM DMARC, URL checker, phishing protection, AI security, threat detection" />
-    <meta name="author" content="Phishing Analyzer" />
+    <meta name="author" content="EchoMe" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://phishing-email-detector-amber.vercel.app" />
+    <link rel="canonical" href="https://shii9.github.io/Phishing-Analyzer/" />
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Theme & PWA -->
     <meta name="theme-color" content="#4a9eff" />
@@ -21,19 +26,19 @@
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://phishing-email-detector-amber.vercel.app" />
-    <meta property="og:title" content="Ultimate Phishing Analyzer - AI-Powered Security Analysis" />
+    <meta property="og:url" content="https://shii9.github.io/Phishing-Analyzer/" />
+    <meta property="og:title" content="EchoMe - AI-Powered Security Analysis" />
     <meta property="og:description" content="Advanced AI-powered phishing analysis tool. Analyze emails, check URLs, parse headers, and protect against cyber threats with real-time analysis. " />
     <meta property="og:image" content="favicon.ico" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="Phishing Analyzer" />
+    <meta property="og:site_name" content="EchoMe" />
     <meta property="og:locale" content="en_US" />
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://phishing-email-detector-amber.vercel.app" />
-    <meta name="twitter:title" content="Ultimate Phishing Analyzer - AI-Powered Security Analysis" />
+    <meta name="twitter:url" content="https://shii9.github.io/Phishing-Analyzer/" />
+    <meta name="twitter:title" content="EchoMe - AI-Powered Security Analysis" />
     <meta name="twitter:description" content="Detect phishing and email fraud instantly with AI. Free tool with multilingual support, header analysis, and URL verification." />
     <meta name="twitter:image" content="favicon.ico" />
     <meta name="twitter:creator" content="@phishingalert" />
@@ -42,15 +47,15 @@
     <meta name="format-detection" content="telephone=no" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Phishing Analyzer" />
+    <meta name="apple-mobile-web-app-title" content="EchoMe" />
     
     <!-- Structured Data - Organization -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "Ultimate Phishing Analyzer",
-      "url": "https://phishing-email-detector-amber.vercel.app",
+      "name": "EchoMe",
+      "url": "https://shii9.github.io/Phishing-Analyzer/",
       "description": "AI-powered anti-phishing email detection and security analysis tool with multilingual support and advanced threat detection",
       "applicationCategory": "SecurityApplication",
       "operatingSystem": "Any",
@@ -108,7 +113,18 @@
     </script>
   </head>
 
-  <body>
+  <body ontouchstart="">
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var path = params.get('p');
+        if (!path) return;
+        var query = params.get('q') || '';
+        var base = '/Phishing-Analyzer/';
+        var target = base.replace(/\/$/, '') + (path.charAt(0) === '/' ? path : '/' + path) + query;
+        window.history.replaceState(null, '', target);
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -55,6 +55,16 @@ export interface PhishingResult {
         parameterCount: number;
       };
     }[];
+    ipAnalysis?: any[];
+    domainAnalysis?: any[];
+    fileAnalysis?: any[];
+    individualResults?: {
+      item: string;
+      score: number;
+      verdict: string;
+      riskLevel: 'safe' | 'suspicious' | 'phishing';
+      reasons: string[];
+    }[];
   };
   analysisDetails?: {
     engines: {

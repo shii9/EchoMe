@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, AlertTriangle, CheckCircle2, XCircle, Loader2, BarChart3, RefreshCw, History, Download, Brain, Copy, Check, TrendingUp, FileText, MessageSquare, ArrowLeftRight, Radar, FileJson, FileSpreadsheet, MoreHorizontal, Upload, File as FileIcon, Link, MapPin, Globe, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle2, XCircle, Loader2, BarChart3, RefreshCw, History, Download, Brain, Copy, Check, TrendingUp, FileText, MessageSquare, ArrowLeftRight, Radar, FileJson, FileSpreadsheet, MoreHorizontal, Upload, File as FileIcon, Link, MapPin, Globe, ChevronDown, ChevronUp, ChevronRight, Sparkles, List, Menu } from 'lucide-react';
 import { InputTypeSelector } from './InputTypeSelector';
 import type { InputType } from '../types/phishing';
 import { Navbar } from './Navbar';
 import { MobileMenu } from './MobileMenu';
-import { FloatingActionButton } from './FloatingActionButton';
 import { AnimatedCounter } from './AnimatedCounter';
 import { RippleButton } from './RippleButton';
 import { AnalysisCardSkeleton } from './AnalysisCardSkeleton';
@@ -39,6 +38,8 @@ import { EmailHeaderParser } from './EmailHeaderParser';
 import { ScreenshotAnalyzer } from './ScreenshotAnalyzer';
 import { URLContentAnalyzer } from './URLContentAnalyzer';
 import { URLScreenshotAnalyzer } from './URLScreenshotAnalyzer';
+import { IPScreenshotAnalyzer } from './IPScreenshotAnalyzer';
+import { DomainScreenshotAnalyzer } from './DomainScreenshotAnalyzer';
 import { AIAssistant } from './AIAssistant';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -50,12 +51,15 @@ import { exportHistoryToCSV } from '@/utils/csvExport';
 import { exportHistoryToJSON, exportResultToJSON } from '@/utils/jsonExport';
 import { checkAchievements } from '@/utils/achievementSystem';
 import { toast } from 'sonner';
+
+const MAX_ANALYSIS_INPUT_LENGTH = 200_000;
 import { AchievementToast } from './AchievementToast';
 import confetti from 'canvas-confetti';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
 import APIKeysModal from './APIKeysModal';
 import { Footer } from './Footer';
+import { scanPhishingInput } from '@/utils/phishingScoring';
 
 export const PhishingDetectorEnhanced = () => {
   const { history, setHistory, sidebarHistory, setSidebarHistory, stats, setStats, quizOpen, setQuizOpen } = useAnalytics();
@@ -78,6 +82,9 @@ export const PhishingDetectorEnhanced = () => {
   const [analysisSteps, setAnalysisSteps] = useState<any[]>([]);
   const [showHeaderParser, setShowHeaderParser] = useState(false);
   const [showScreenshot, setShowScreenshot] = useState(false);
+  const [showURLScreenshot, setShowURLScreenshot] = useState(false);
+  const [showIPScreenshot, setShowIPScreenshot] = useState(false);
+  const [showDomainScreenshot, setShowDomainScreenshot] = useState(false);
 
   const [showAI, setShowAI] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -97,7 +104,7 @@ export const PhishingDetectorEnhanced = () => {
 
   // Global expansion state for detection reasons UI (moved to component scope to satisfy Hooks rules)
   const [expandedIdGlobal, setExpandedIdGlobal] = useState<string | null>(null);
-  const categoryKeys = ['URLs','Brand','Content','Attachments','Advanced','Headers','Others'];
+  const categoryKeys = ['URLs', 'Brand', 'Content', 'Attachments', 'Advanced', 'Headers', 'Others'];
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     categoryKeys.forEach(k => init[k] = true);
@@ -145,7 +152,7 @@ export const PhishingDetectorEnhanced = () => {
     }
 
     const timeoutId = setTimeout(() => {
-      const quickScore = calculateQuickScore(inputText);
+      const quickScore = scanPhishingInput(inputText, inputType, file?.name || fileNameText).score;
       setRealtimeScore(quickScore);
     }, 500);
 
@@ -208,18 +215,6 @@ export const PhishingDetectorEnhanced = () => {
     }
   };
 
-  const calculateQuickScore = (text: string) => {
-    let score = 0;
-    const lowerText = text.toLowerCase();
-    
-    if (/urgent|immediately|verify now/i.test(lowerText)) score += 20;
-    if (/winner|prize|lottery/i.test(lowerText)) score += 25;
-    if (/password|ssn|credit card/i.test(lowerText)) score += 30;
-    if (/http:\/\/\d+\.\d+\.\d+\.\d+/.test(text)) score += 25;
-    
-    return Math.min(score, 100);
-  };
-
   const analyzeInput = async () => {
     const inputText = getCurrentInputText();
     if (!inputText.trim() && inputType !== 'file') return;
@@ -230,6 +225,10 @@ export const PhishingDetectorEnhanced = () => {
 
   const performAnalysis = async (text: string): Promise<PhishingResult> => {
     if (!text.trim()) return {} as PhishingResult;
+    if (text.length > MAX_ANALYSIS_INPUT_LENGTH) {
+      toast.error(`Input is too large. Please keep it under ${MAX_ANALYSIS_INPUT_LENGTH.toLocaleString()} characters.`);
+      return {} as PhishingResult;
+    }
 
     setIsLoading(true);
     setAnalysisSteps([
@@ -276,14 +275,25 @@ export const PhishingDetectorEnhanced = () => {
       };
     }
 
+    interface IndividualItemResult {
+      item: string;
+      score: number;
+      verdict: string;
+      riskLevel: 'safe' | 'suspicious' | 'phishing';
+      reasons: string[];
+    }
+
     interface AnalysisMetadata {
       urlAnalysis?: UrlAnalysisResult[];
       ipAnalysis?: any[];
       domainAnalysis?: any[];
       fileAnalysis?: any[];
+      individualResults?: IndividualItemResult[];
     }
 
-    let metadata: AnalysisMetadata = {};
+    let metadata: AnalysisMetadata = {
+      individualResults: [] as IndividualItemResult[]
+    };
 
     // Initialize categorized reasons
     const categorizedReasons = {
@@ -298,6 +308,16 @@ export const PhishingDetectorEnhanced = () => {
       other: [] as string[]
     };
 
+    // Shared deterministic signals keep the different input analyzers
+    // consistent while the detailed branches below continue to build reports.
+    const sharedScan = scanPhishingInput(text, inputType, file?.name || fileNameText);
+    const sharedBaseScore = sharedScan.score;
+    reasons.push(...sharedScan.reasons);
+    Object.entries(sharedScan.categorizedReasons).forEach(([category, messages]) => {
+      const target = categorizedReasons[category as keyof typeof categorizedReasons];
+      if (target && Array.isArray(messages)) target.push(...messages);
+    });
+
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
       setAnalysisSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'complete' } : i === 1 ? { ...s, status: 'active' } : s));
@@ -307,1050 +327,1028 @@ export const PhishingDetectorEnhanced = () => {
 
       await new Promise(resolve => setTimeout(resolve, 600));
 
-    // Different analysis logic based on input type
-    switch (inputType) {
-      case 'email':
-        // Existing email analysis logic
-        const urgentKeywords = ['urgent', 'immediately', 'action required', 'verify now', 'within 24 hours', 'expires today', 'suspended', 'locked', 'act now', 'immediate', 'now', 'today', '24 hours', '12 hours', '6 hours'];
-        const prizeKeywords = ['winner', 'prize', 'congratulations', 'lottery', 'inheritance', 'millions', 'selected', 'claim', 'free', 'gift', 'bonus', 'reward'];
-        const threatKeywords = ['account suspended', 'verify account', 'unusual activity', 'security alert', 'confirm identity', 'unauthorized access', 'blocked', 'locked', 'suspended', 'alert'];
-        const actionKeywords = ['click here', 'download now', 'open attachment', 'update payment', 'confirm password', 'verify', 'update', 'confirm'];
+      // Different analysis logic based on input type
+      switch (inputType) {
+        case 'email': {
+          // Existing email analysis logic
+          const urgentKeywords = ['urgent', 'immediately', 'action required', 'verify now', 'within 24 hours', 'expires today', 'suspended', 'locked', 'act now', 'immediate', 'now', 'today', '24 hours', '12 hours', '6 hours'];
+          const prizeKeywords = ['winner', 'prize', 'congratulations', 'lottery', 'inheritance', 'millions', 'selected', 'claim', 'free', 'gift', 'bonus', 'reward'];
+          const threatKeywords = ['account suspended', 'verify account', 'unusual activity', 'security alert', 'confirm identity', 'unauthorized access', 'blocked', 'locked', 'suspended', 'alert'];
+          const actionKeywords = ['click here', 'download now', 'open attachment', 'update payment', 'confirm password', 'verify', 'update', 'confirm'];
 
-        const foundUrgent = urgentKeywords.filter(kw => text.toLowerCase().includes(kw));
-        const foundPrize = prizeKeywords.filter(kw => text.toLowerCase().includes(kw));
-        const foundThreat = threatKeywords.filter(kw => text.toLowerCase().includes(kw));
-        const foundAction = actionKeywords.filter(kw => text.toLowerCase().includes(kw));
+          const foundUrgent = urgentKeywords.filter(kw => text.toLowerCase().includes(kw));
+          const foundPrize = prizeKeywords.filter(kw => text.toLowerCase().includes(kw));
+          const foundThreat = threatKeywords.filter(kw => text.toLowerCase().includes(kw));
+          const foundAction = actionKeywords.filter(kw => text.toLowerCase().includes(kw));
 
-        if (foundUrgent.length > 0) {
-          score += foundUrgent.length * 10; // Reduced from 15 to 10 for better calibration
-          keywordMatches += foundUrgent.length;
-          categorizedReasons.context.push(`⚠️ Creates false urgency: "${foundUrgent.join('", "')}"`);
-        }
-
-        if (foundPrize.length > 0) {
-          score += foundPrize.length * 8; // Reduced from 20 to 8 for better calibration
-          keywordMatches += foundPrize.length;
-          categorizedReasons.context.push(`🎰 Suspicious prize claims: "${foundPrize.join('", "')}"`);
-        }
-
-        if (foundThreat.length > 0) {
-          score += foundThreat.length * 12; // Reduced from 20 to 12 for better calibration
-          keywordMatches += foundThreat.length;
-          categorizedReasons.context.push(`🚨 Threatening language: "${foundThreat.join('", "')}"`);
-        }
-
-        if (foundAction.length > 0) {
-          score += foundAction.length * 15; // Reduced from 18 to 15 for better calibration
-          keywordMatches += foundAction.length;
-          categorizedReasons.context.push(`🔗 Suspicious call-to-action: "${foundAction.join('", "')}"`);
-        }
-
-        const ipUrlPattern = /https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/g;
-        const ipUrls = text.match(ipUrlPattern);
-        if (ipUrls) {
-          score += 45; // Increased from 35 to 45 for better detection
-          urlIssues += ipUrls.length;
-          categorizedReasons.urls.push(`🌐 IP-based URLs detected (${ipUrls.length} found)`);
-        }
-        // Attachments checks
-        const passwordProtectedFiles = /password.?protected|locked|protected file|encrypted file|secure attachment/i.test(text);
-        if (passwordProtectedFiles) {
-          score += 25; // Increased from 20 to 25
-          categorizedReasons.attachments.push(`🔒 Password-protected files mentioned: password-protected, locked, protected file`);
-        }
-
-        // Advanced checks
-        const mixedCharacterSets = /[\u0400-\u04FF\u0600-\u06FF\u3040-\u309F\u30A0-\u30FF]/g.test(text);
-        if (mixedCharacterSets) {
-          score += 20; // Increased from 15 to 20
-          categorizedReasons.advanced.push(`🌍 Mixed character sets detected: 1 instances`);
-        }
-
-        // Headers checks (simulated for email analysis)
-        // Only check these if email headers are explicitly present
-        const hasEmailHeaders = text.toLowerCase().includes('received:') || text.toLowerCase().includes('authentication-results');
-        if (hasEmailHeaders) {
-          const noSPF = !text.toLowerCase().includes('spf=pass');
-          if (noSPF) {
-            score += 15;
-            categorizedReasons.headers.push(`⚠️ No SPF authentication found`);
+          if (foundUrgent.length > 0) {
+            score += foundUrgent.length * 10; // Reduced from 15 to 10 for better calibration
+            keywordMatches += foundUrgent.length;
+            categorizedReasons.context.push(`⚠️ Creates false urgency: "${foundUrgent.join('", "')}"`);
           }
 
-          const noDKIM = !text.toLowerCase().includes('dkim=pass');
-          if (noDKIM) {
-            score += 15;
-            categorizedReasons.headers.push(`⚠️ No DKIM signature found`);
+          if (foundPrize.length > 0) {
+            score += foundPrize.length * 8; // Reduced from 20 to 8 for better calibration
+            keywordMatches += foundPrize.length;
+            categorizedReasons.context.push(`🎰 Suspicious prize claims: "${foundPrize.join('", "')}"`);
           }
 
-          const noDMARC = !text.toLowerCase().includes('dmarc=pass');
-          if (noDMARC) {
-            score += 15;
-            categorizedReasons.headers.push(`⚠️ No DMARC results found`);
-          }
-        }
-
-        // Context checks
-        const suspiciousTime = /late night|early morning|unusual time|midnight|dawn/i.test(text);
-        if (suspiciousTime) {
-          score += 8; // Increased from 5 to 8
-          categorizedReasons.context.push(`🕐 Email sent at suspicious time`);
-        }
-
-        const detectedRegion = /india|indian|inr|rupee|bangladesh|bangladeshi|bdt|taka|dhaka|chittagong/i.test(text);
-        if (detectedRegion) {
-          score += 8; // Increased from 5 to 8
-          categorizedReasons.context.push(`📍 Detected region: BANGLADESH`);
-        }
-
-        // Additional context checks for Bangladesh-specific scams
-        const bangladeshScams = /kyc|nid|tin|mobile banking|bkash|nagad|rocket|upay|sonali bank|janata bank|agrani bank|dutch bangla bank|brac bank|eastern bank|prime bank|standard chartered|hsbc|citibank|dbbl|grameenphone|banglalink|robi|airtel|teletalk|daraz|pickaboo|evaly|chaldal|shohoz|pathao|uber|careem|bdtaxi/i.test(text);
-        if (bangladeshScams) {
-          score += 15; // Increased from 12 to 15 for better detection
-          categorizedReasons.context.push(`🇧🇩 Bangladesh-specific services mentioned (potential targeted scam)`);
-        }
-
-        // --- Enhanced email-specific heuristics: URL extraction, brand, grammar, attachments, headers, obfuscation ---
-        // Extract URLs (http/https, mailto, javascript:, data:) and bare-looking domains
-        const urlExtractRegex = /((https?:\/\/[\w\-\.:%@\/?#=+&~,]+)|(mailto:[\w@.\-+%]+)|(javascript:[^\s]+)|(data:[^\s]+))/gi;
-        const foundUrls = Array.from(new Set((text.match(urlExtractRegex) || []).map(u => u.trim())));
-        for (const u of foundUrls) {
-          // Normalize
-          const uLower = u.toLowerCase();
-          if (/^javascript:/.test(uLower) || uLower.startsWith('data:')) {
-            score += 40;
-            categorizedReasons.advanced.push(`⚠️ JavaScript/data URI in email content: ${u}`);
+          if (foundThreat.length > 0) {
+            score += foundThreat.length * 12; // Reduced from 20 to 12 for better calibration
+            keywordMatches += foundThreat.length;
+            categorizedReasons.context.push(`🚨 Threatening language: "${foundThreat.join('", "')}"`);
           }
 
-          if (uLower.startsWith('mailto:')) {
-            categorizedReasons.context.push(`✉️ Mailto link present: ${u.replace(/^mailto:/, '')}`);
+          if (foundAction.length > 0) {
+            score += foundAction.length * 15; // Reduced from 18 to 15 for better calibration
+            keywordMatches += foundAction.length;
+            categorizedReasons.context.push(`🔗 Suspicious call-to-action: "${foundAction.join('", "')}"`);
           }
 
-          // HTTP (no TLS)
-          if (uLower.startsWith('http://')) {
-            score += 20;
-            categorizedReasons.urls.push(`🔓 HTTP URL (no TLS) found: ${u}`);
+          const ipUrlPattern = /https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/g;
+          const ipUrls = text.match(ipUrlPattern);
+          if (ipUrls) {
+            score += 45; // Increased from 35 to 45 for better detection
+            urlIssues += ipUrls.length;
+            categorizedReasons.urls.push(`🌐 IP-based URLs detected (${ipUrls.length} found)`);
           }
-
-          // IP-based URL
-          if (/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(u)) {
-            score += 40;
-            categorizedReasons.urls.push(`🌐 IP-based URL detected in email: ${u}`);
-          }
-
-          // Shorteners
-          const shorteners = ['bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'ow.ly', 'is.gd', 'cutt.ly', 'shrtco.de'];
-          if (shorteners.some(s => uLower.includes(s))) {
-            score += 30;
-            categorizedReasons.urls.push(`🔗 Shortened URL used: ${u}`);
-          }
-
-          // Suspicious parameters (base64-like)
-          if (/\?[A-Za-z0-9+/=]{20,}/.test(u)) {
-            score += 18;
-            categorizedReasons.advanced.push(`🔒 Obfuscated/base64 parameters in URL: ${u}`);
-          }
-
-          // Suspicious TLDs
-          const suspiciousEmailTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.club', '.online', '.site'];
-          for (const tld of suspiciousEmailTlds) {
-            if (uLower.includes(tld)) {
-              score += 24;
-              categorizedReasons.urls.push(`⚠️ Suspicious TLD in link: ${tld} (link: ${u})`);
-              break;
-            }
-          }
-
-          // Brand impersonation inside URLs or surrounding text
-          const brands = [
-            'paypal','amazon','microsoft','apple','google','netflix','bank','banking','paytm','aadhaar','uidai','gmail','outlook','hotmail',
-            'bkash','nagad','rocket','daraz','pathao','shohoz','chaldal','sonali','brac','dbbl','dutch bangla','city bank','janata bank','islami bank','robi','banglalink'
-          ];
-          for (const b of brands) {
-            if (uLower.includes(b) || text.toLowerCase().includes(b + ' account') || text.toLowerCase().includes(b + ' verification')) {
-              // If the visible URL doesn't clearly point to the official domain, flag
-              if (!uLower.includes(`${b}.com`) && !uLower.includes(`${b}.org`) && !uLower.includes(`${b}.net`)) {
-                score += 35;
-                categorizedReasons.brand.push(`🎭 Brand impersonation suspected around: ${b}`);
-                break;
-              }
-            }
-          }
-        }
-
-        // Grammar & formatting heuristics
-        const exclamationCount = (text.match(/!/g) || []).length;
-        if (exclamationCount >= 3) {
-          score += 8;
-          categorizedReasons.grammar.push(`❗ Excessive exclamation marks detected (${exclamationCount})`);
-        }
-
-        const allCapsWords = (text.match(/\b[A-Z]{3,}\b/g) || []).length;
-        if (allCapsWords >= 3) {
-          score += 10;
-          categorizedReasons.grammar.push(`🔠 Excessive ALL CAPS words detected (${allCapsWords})`);
-        }
-
-        const repeatedPunctuation = /([!?.]){2,}/.test(text);
-        if (repeatedPunctuation) {
-          score += 6;
-          categorizedReasons.grammar.push(`❗ Repeated punctuation detected`);
-        }
-
-        // Generic greetings and lack of personalization
-        const genericGreeting = /dear (customer|user|client|sir|madam)|hello dear|dear sir|dear madam/i.test(text);
-        if (genericGreeting) {
-          score += 10;
-          categorizedReasons.context.push(`👤 Generic greeting detected (no personalization)`);
-        }
-
-        // Attachment mentions and filenames
-        const fileMentionRegex = /\b([\w\- ]+\.(exe|scr|zip|rar|7z|iso|img|js|vbs|docm|xlsm|pptm|pdf|docx|xlsx|pptx))\b/gi;
-        const fileMatches = Array.from(new Set((text.match(fileMentionRegex) || []).map(s => s.trim())));
-        if (fileMatches.length > 0) {
-          for (const f of fileMatches) {
-            const ext = f.substring(f.lastIndexOf('.'));
-            if (/\.(exe|scr|js|vbs)$/i.test(ext)) {
-              score += 40;
-              categorizedReasons.attachments.push(`⚠️ Dangerous attachment filename referenced: ${f}`);
-            } else if (/\.(docm|xlsm|pptm)$/i.test(ext)) {
-              score += 35;
-              categorizedReasons.attachments.push(`⚠️ Macro-enabled Office file referenced: ${f}`);
-            } else {
-              score += 6;
-              categorizedReasons.attachments.push(`📎 Attachment mentioned: ${f}`);
-            }
-          }
-        }
-
-        // Password-protected attachment mention
-        if (/password.?protected|protected file|encrypted file|password:? \w+/i.test(text)) {
-          score += 18;
-          categorizedReasons.attachments.push(`🔒 Password-protected attachment mentioned`);
-        }
-
-        // Header-like clues (From:, Reply-To:, Return-Path:, Received:)
-        const fromMatch = text.match(/from:\s*([^\n\r]+)/i);
-        const replyToMatch = text.match(/reply-to:\s*([^\n\r]+)/i);
-        if (fromMatch) {
-          const fromVal = fromMatch[1];
-          if (replyToMatch) {
-            const replyVal = replyToMatch[1];
-            if (!replyVal.includes('@') || (fromVal && replyVal && replyVal.split('@')[1] !== fromVal.split('@')[1])) {
-              score += 18;
-              categorizedReasons.headers.push(`⚠️ Sender/Reply-To mismatch or suspicious header: From(${fromVal}) Reply-To(${replyVal})`);
-            }
-          }
-        }
-
-        // Obfuscation heuristics: many dots, unicode homoglyphs, zero/oh swaps
-        if (/(\.|\-|_){6,}/.test(text)) {
-          score += 8;
-          categorizedReasons.advanced.push(`🔎 Excessive separators/dots detected (possible obfuscation)`);
-        }
-
-        if (/[\u0400-\u04FF\u0370-\u03FF]/.test(text)) {
-          score += 18;
-          categorizedReasons.advanced.push(`🌍 Non-Latin characters present (possible homograph / internationalized text)`);
-        }
-
-        // Social engineering patterns: urgency + verification + link
-        if ((foundUrls.length > 0 || text.toLowerCase().includes('link')) && (foundUrgent.length > 0 || foundAction.length > 0 || foundThreat.length > 0)) {
-          score += 20;
-          categorizedReasons.context.push(`🔗 Urgent request combined with link(s) — classic phishing pattern`);
-        }
-        break;
-
-      case 'file':
-        // Basic file analysis
-        const fileAnalysisResults: any[] = [];
-        if (file) {
-          const fileName = file.name.toLowerCase();
-          const fileType = file.type.toLowerCase();
-
-          // Check for suspicious file extensions
-          const suspiciousExtensions = ['.exe', '.bat', '.cmd', '.scr', '.pif', '.com', '.vbs', '.js', '.jar'];
-          if (suspiciousExtensions.some(ext => fileName.endsWith(ext))) {
-            score += 40;
-            keywordMatches += 1; // Count as keyword match for suspicious extension
-            const ext = fileName.slice(fileName.lastIndexOf('.'));
-            reasons.push(`⚠️ Suspicious file extension detected: ${ext}`);
-            categorizedReasons.attachments.push(`⚠️ Suspicious file extension: ${ext}`);
-            fileAnalysisResults.push({ file: file.name, issue: 'Suspicious extension', detail: ext });
-          }
-
-          // Check file size (very large files might be suspicious)
-          if (file.size > 10 * 1024 * 1024) { // 10MB
-            score += 15;
-            urlIssues += 1; // Count as URL/file issue
-            const sizeMB = (file.size / (1024*1024)).toFixed(1);
-            reasons.push(`📁 Large file size may indicate malware (${sizeMB} MB)`);
-            categorizedReasons.attachments.push(`📁 Large file size: ${sizeMB} MB`);
-            fileAnalysisResults.push({ file: file.name, issue: 'Large file size', detail: `${sizeMB} MB` });
-          }
-
-          // Check for double extensions
-          if (fileName.split('.').length > 2) {
-            score += 25;
-            keywordMatches += 1; // Count as keyword match for double extension
-            reasons.push(`🎭 Double file extension detected: ${file.name}`);
-            categorizedReasons.advanced.push(`🎭 Double extension detected (masquerading): ${file.name}`);
-            fileAnalysisResults.push({ file: file.name, issue: 'Double extension', detail: file.name });
-          }
-
-          reasons.push(`📄 File analyzed: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
-          fileAnalysisResults.push({ file: file.name, sizeKB: (file.size / 1024).toFixed(1) });
-
-          // Additional file heuristics: macro-enabled Office files, archives, disk images, suspicious MIME types
-          if (/\.(docm|xlsm|pptm)$/i.test(fileName)) {
-            score += 40;
-            categorizedReasons.attachments.push(`⚠️ Macro-enabled Office file detected: ${fileName}`);
-            fileAnalysisResults.push({ file: file.name, issue: 'Macro-enabled Office document' });
-            reasons.push(`⚠️ Macro-enabled Office file: ${fileName}`);
-          }
-
-          if (fileType.includes('zip') || /\.(zip|7z|rar|tar|gz)$/i.test(fileName)) {
-            score += 18;
-            categorizedReasons.attachments.push(`🗜️ Archive file may contain executables: ${fileName}`);
-            fileAnalysisResults.push({ file: file.name, issue: 'Archive container' });
-          }
-
-          if (/\.(iso|img|dmg)$/i.test(fileName)) {
-            score += 20;
-            categorizedReasons.attachments.push(`🖴 Disk image detected: ${fileName}`);
-            fileAnalysisResults.push({ file: file.name, issue: 'Disk image' });
-          }
-
-          if (/application\/(x-msdownload|x-msdos-program|x-sh|javascript)/i.test(fileType)) {
-            score += 35;
-            categorizedReasons.attachments.push(`⚠️ Suspicious executable MIME type: ${fileType || fileName}`);
-            fileAnalysisResults.push({ file: file.name, issue: 'Suspicious MIME type' });
-          }
-        } else if (text.trim()) {
-          // If no file but text provided, analyze the text
-          const suspiciousPatterns = ['malware', 'virus', 'trojan', 'ransomware', 'spyware'];
-          const foundSuspicious = suspiciousPatterns.filter(pattern => text.toLowerCase().includes(pattern));
-          if (foundSuspicious.length > 0) {
-            score += foundSuspicious.length * 20;
-            keywordMatches += foundSuspicious.length;
-            reasons.push(`🚨 Suspicious content detected: ${foundSuspicious.join(', ')}`);
-          }
-        }
-        break;
-
-      case 'url':
-        // Enhanced URL analysis with structured output
-        const urlLines = text.split('\n').filter(line => line.trim());
-        const urlAnalysisResults: UrlAnalysisResult[] = [];
-        
-        // Whitelist of legitimate/safe domains
-        const safeDomainsWhitelist = ['google.com', 'github.com', 'github.io', 'amazon.com', 'amazon.com.bd', 'microsoft.com', 'apple.com', 'facebook.com', 'instagram.com', 'twitter.com', 'linkedin.com', 'youtube.com', 'gmail.com', 'outlook.com', 'slack.com', 'discord.com', 'wikipedia.org', 'stackoverflow.com', 'reddit.com', 'quora.com', 'medium.com', 'dev.to', 'hashnode.com', 'npm.org', 'pypi.org', 'rubygems.org', 'crates.io', 'nuget.org', 'maven.org', 'docs.example.com'];
-
-        for (const url of urlLines) {
-          const urlLower = url.toLowerCase();
-          const urlAnalysis: UrlAnalysisResult = {
-            url: url,
-            generalOverview: '',
-            suspicionIndicators: [],
-            technicalDetails: {
-              protocol: '',
-              domainType: '',
-              tld: '',
-              subdomainCount: 0,
-              urlLength: 0,
-              hasParameters: false,
-              port: 0
-            },
-            threatReasoning: '',
-            verdict: '',
-            recommendation: '',
-            analysisReport: {
-              domain: '',
-              ipAddress: '',
-              sslCertificate: '',
-              redirectChain: '',
-              blacklistCheck: '',
-              whoisInfo: '',
-              urlLength: 0,
-              encodingDetected: '',
-              subdomainCount: 0,
-              parameterCount: 0
-            }
-          };
-
-          // Extract domain and technical details
-          const domainMatch = url.match(/https?:\/\/([^\/]+)/);
-          const domain = domainMatch ? domainMatch[1] : url;
-          const protocol = url.startsWith('https://') ? 'HTTPS' : 'HTTP';
-          const tld = domain.substring(domain.lastIndexOf('.'));
-          const subdomainCount = (domain.match(/\./g) || []).length - 1;
-          
-          // Check if URL is on the whitelist of safe domains
-          const isWhitelisted = safeDomainsWhitelist.some(safeDomain => urlLower.includes(safeDomain));
-
-          // Determine general overview
-          if (urlLower.includes('paypal') || urlLower.includes('login') || urlLower.includes('verify')) {
-            urlAnalysis.generalOverview = 'This URL appears to be related to account verification or login services, potentially impersonating legitimate financial or service providers.';
-          } else if (urlLower.includes('amazon') || urlLower.includes('microsoft') || urlLower.includes('apple') || urlLower.includes('google')) {
-            urlAnalysis.generalOverview = 'This URL claims to represent a major technology or e-commerce company, possibly for account management or service notifications.';
-          } else if (/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(url)) {
-            urlAnalysis.generalOverview = 'This is an IP-based URL that bypasses traditional domain name resolution, commonly used to evade detection.';
-          } else {
-            urlAnalysis.generalOverview = 'This URL appears to be a web address that may contain suspicious or potentially harmful content.';
-          }
-
-          // Technical Details
-          urlAnalysis.technicalDetails = {
-            protocol: protocol,
-            domainType: /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain) ? 'IP Address' : 'FQDN',
-            tld: tld,
-            subdomainCount: subdomainCount,
-            urlLength: url.length,
-            hasParameters: url.includes('?'),
-            port: url.match(/:(\d+)/) ? parseInt(url.match(/:(\d+)/)![1]) : (protocol === 'HTTPS' ? 443 : 80)
-          };
-
-          // IP-based URLs (high risk)
-          if (/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(url)) {
-            score += 40; // Increased from 35 to 40
-            urlIssues += 1;
-            urlAnalysis.suspicionIndicators.push('Direct IP address usage instead of domain name');
-            urlAnalysis.suspicionIndicators.push('Bypasses traditional domain reputation checks');
-            categorizedReasons.urls.push(`🌐 IP-based URL detected: ${url}`);
-          }
-
-          // HTTP instead of HTTPS
-          if (url.startsWith('http://') && !url.startsWith('https://')) {
+          // Attachments checks
+          const passwordProtectedFiles = /password.?protected|locked|protected file|encrypted file|secure attachment/i.test(text);
+          if (passwordProtectedFiles) {
             score += 25; // Increased from 20 to 25
-            urlIssues += 1;
-            urlAnalysis.suspicionIndicators.push('Uses unencrypted HTTP protocol');
-            urlAnalysis.suspicionIndicators.push('No SSL/TLS certificate protection');
-            categorizedReasons.headers.push(`⚠️ Unencrypted HTTP protocol: ${url}`);
+            categorizedReasons.attachments.push(`🔒 Password-protected files mentioned: password-protected, locked, protected file`);
           }
 
-          // Shortened URLs (high risk)
-          const shorteners = ['bit.ly', 'tinyurl.com', 'goo.gl', 'ow.ly', 't.co', 'is.gd', 'buff.ly', 'adf.ly', 'tiny.cc', 'cli.gs', 'qr.net', '1url.com', 'tweez.me', 'v.gd', 'tr.im', 'lnkd.in', 'db.tt', 'qr.ae', 'adfoc.us', 'cur.lv', 'tiny.pl', 'prettylinkpro.com', 'shrinkonce.com', 'shrtfly.com', 'shortquik.com', 'fastt.ly', 'short.pe', 'vzturl.com', 'cutt.ly', 'shorturl.at', 'tiny.one', 'shorte.st', 'short.io', 'rebrand.ly', 'bl.ink', 'linktree.com', 'bit.do'];
-          if (shorteners.some(shortener => urlLower.includes(shortener))) {
-            score += 35; // Increased from 30 to 35
-            urlIssues += 1;
-            urlAnalysis.suspicionIndicators.push('URL shortening service detected');
-            urlAnalysis.suspicionIndicators.push('Obfuscates destination URL');
-            categorizedReasons.urls.push(`🔗 Shortened URL detected: ${url}`);
+          // Advanced checks
+          const mixedCharacterSets = /[\u0400-\u04FF\u0600-\u06FF\u3040-\u309F\u30A0-\u30FF]/g.test(text);
+          if (mixedCharacterSets) {
+            score += 20; // Increased from 15 to 20
+            categorizedReasons.advanced.push(`🌍 Mixed character sets detected: 1 instances`);
           }
 
-          // Suspicious TLDs
-          const suspiciousTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.club', '.online', '.site', '.website', '.space', '.fun', '.tech', '.click', '.link', '.buzz', '.work', '.party', '.review', '.science', '.business', '.network', '.company', '.email', '.download', '.trade', '.bid', '.webcam', '.loan', '.win', '.date', '.faith', '.racing', '.review', '.science', '.accountant', '.cricket', '.football', '.golf', '.tennis', '.casino', '.poker', '.bet', '.blackjack', '.roulette', '.porn', '.sex', '.adult', '.xxx'];
-          if (suspiciousTlds.some(tld => urlLower.endsWith(tld))) {
-            score += 28;
-            urlIssues += 1;
-            urlAnalysis.suspicionIndicators.push(`Free or suspicious TLD: ${tld}`);
-            urlAnalysis.suspicionIndicators.push('Commonly associated with malicious domains');
-            categorizedReasons.urls.push(`⚠️ Suspicious TLD detected: ${tld}`);
-          }
-
-          // Unusual ports
-          const portMatch = url.match(/:(\d+)/);
-          if (portMatch) {
-            const port = parseInt(portMatch[1]);
-            if (port !== 80 && port !== 443 && port !== 8080 && port !== 8443) {
+          // Headers checks (simulated for email analysis)
+          // Only check these if email headers are explicitly present
+          const hasEmailHeaders = text.toLowerCase().includes('received:') || text.toLowerCase().includes('authentication-results');
+          if (hasEmailHeaders) {
+            const noSPF = !text.toLowerCase().includes('spf=pass');
+            if (noSPF) {
               score += 15;
-              urlIssues += 1;
-              urlAnalysis.suspicionIndicators.push(`Non-standard port usage: ${port}`);
-              categorizedReasons.advanced.push(`🔌 Non-standard port detected: ${port}`);
+              categorizedReasons.headers.push(`⚠️ No SPF authentication found`);
+            }
+
+            const noDKIM = !text.toLowerCase().includes('dkim=pass');
+            if (noDKIM) {
+              score += 15;
+              categorizedReasons.headers.push(`⚠️ No DKIM signature found`);
+            }
+
+            const noDMARC = !text.toLowerCase().includes('dmarc=pass');
+            if (noDMARC) {
+              score += 15;
+              categorizedReasons.headers.push(`⚠️ No DMARC results found`);
             }
           }
 
-          // Suspicious URL parameters
-          if (url.includes('?')) {
-            const sensitiveParams = ['login', 'password', 'verify', 'account', 'security', 'bank', 'paypal', 'amazon', 'credit', 'card', 'ssn', 'social', 'security', 'pin', 'cvv', 'otp', 'token', 'auth', 'session', 'redirect', 'return', 'callback'];
-            const foundParams = sensitiveParams.filter(param => urlLower.includes(param));
-            if (foundParams.length > 0) {
-              score += foundParams.length * 12;
-              sensitiveRequests += foundParams.length;
-              urlAnalysis.suspicionIndicators.push(`Sensitive parameters detected: ${foundParams.join(', ')}`);
-              categorizedReasons.context.push(`🔐 Sensitive parameters: ${foundParams.join(', ')}`);
+          // Context checks
+          const suspiciousTime = /late night|early morning|unusual time|midnight|dawn/i.test(text);
+          if (suspiciousTime) {
+            score += 8; // Increased from 5 to 8
+            categorizedReasons.context.push(`🕐 Email sent at suspicious time`);
+          }
+
+          const detectedRegion = /india|indian|inr|rupee|bangladesh|bangladeshi|bdt|taka|dhaka|chittagong/i.test(text);
+          if (detectedRegion) {
+            score += 8; // Increased from 5 to 8
+            categorizedReasons.context.push(`📍 Detected region: BANGLADESH`);
+          }
+
+          // Additional context checks for Bangladesh-specific scams
+          const bangladeshScams = /kyc|nid|tin|mobile banking|bkash|nagad|rocket|upay|sonali bank|janata bank|agrani bank|dutch bangla bank|brac bank|eastern bank|prime bank|standard chartered|hsbc|citibank|dbbl|grameenphone|banglalink|robi|airtel|teletalk|daraz|pickaboo|evaly|chaldal|shohoz|pathao|uber|careem|bdtaxi/i.test(text);
+          if (bangladeshScams) {
+            score += 15; // Increased from 12 to 15 for better detection
+            categorizedReasons.context.push(`🇧🇩 Bangladesh-specific services mentioned (potential targeted scam)`);
+          }
+
+          // --- Enhanced email-specific heuristics: URL extraction, brand, grammar, attachments, headers, obfuscation ---
+          // Extract URLs (http/https, mailto, javascript:, data:) and bare-looking domains
+          const urlExtractRegex = /((https?:\/\/[\w\-\.:%@\/?#=+&~,]+)|(mailto:[\w@.\-+%]+)|(javascript:[^\s]+)|(data:[^\s]+))/gi;
+          const foundUrls = Array.from(new Set((text.match(urlExtractRegex) || []).map(u => u.trim())));
+          for (const u of foundUrls) {
+            // Normalize
+            const uLower = u.toLowerCase();
+            if (/^javascript:/.test(uLower) || uLower.startsWith('data:')) {
+              score += 40;
+              categorizedReasons.advanced.push(`⚠️ JavaScript/data URI in email content: ${u}`);
             }
 
-            // Check for base64 encoded parameters (potential obfuscation)
-            const paramMatch = url.match(/\?([^#]*)/);
-            if (paramMatch) {
-              const params = paramMatch[1];
-              if (/[A-Za-z0-9+/=]{20,}/.test(params)) {
-                score += 18;
-                urlIssues += 1;
-                urlAnalysis.suspicionIndicators.push('Base64-encoded parameters (potential obfuscation)');
-                categorizedReasons.advanced.push(`🔒 Base64-encoded parameters detected (obfuscation attempt)`);
-              }
+            if (uLower.startsWith('mailto:')) {
+              categorizedReasons.context.push(`✉️ Mailto link present: ${u.replace(/^mailto:/, '')}`);
             }
-          }
 
-          // Suspicious keywords in URL path or domain
-          const suspiciousUrlKeywords = ['login', 'password', 'verify', 'account', 'security', 'bank', 'paypal', 'amazon', 'microsoft', 'apple', 'google', 'facebook', 'instagram', 'netflix', 'update', 'confirm', 'validate', 'authenticate', 'secure', 'safe', 'trusted', 'official', 'support', 'help', 'service', 'admin', 'root', 'system', 'alert', 'warning', 'error', 'failed', 'suspended', 'locked', 'blocked', 'disabled', 'urgent', 'immediate', 'action', 'required', 'click', 'download', 'open', 'attachment', 'file', 'exe', 'zip', 'rar', 'pdf', 'doc', 'xls', 'ppt', 'free', 'prize', 'winner', 'lottery', 'claim', 'gift', 'bonus', 'reward', 'cash', 'money', 'bitcoin', 'crypto', 'wallet', 'investment', 'trading', 'forex', 'binary', 'options', 'scam', 'fraud', 'phish', 'hack', 'virus', 'malware', 'trojan', 'ransomware', 'spyware'];
-          
-          // Skip keyword check for whitelisted domains
-          if (!isWhitelisted) {
-            const foundUrlKeywords = suspiciousUrlKeywords.filter(kw => urlLower.includes(kw));
-            if (foundUrlKeywords.length > 0) {
-              score += foundUrlKeywords.length * 15;
-              keywordMatches += foundUrlKeywords.length;
-              urlAnalysis.suspicionIndicators.push(`Suspicious keywords: ${foundUrlKeywords.join(', ')}`);
-              categorizedReasons.context.push(`⚠️ Suspicious keywords detected: ${foundUrlKeywords.slice(0, 3).join(', ')}`);
+            // HTTP (no TLS)
+            if (uLower.startsWith('http://')) {
+              score += 20;
+              categorizedReasons.urls.push(`🔓 HTTP URL (no TLS) found: ${u}`);
             }
-          }
 
-          // Check for URL redirection chains
-          if (urlLower.includes('redirect') || urlLower.includes('return') || urlLower.includes('callback') || urlLower.includes('next')) {
-            score += 10;
-            urlIssues += 1;
-            urlAnalysis.suspicionIndicators.push('Potential redirect chain detected');
-            categorizedReasons.advanced.push(`🔄 URL redirect chain detected`);
-          }
+            // IP-based URL
+            if (/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(u)) {
+              score += 40;
+              categorizedReasons.urls.push(`🌐 IP-based URL detected in email: ${u}`);
+            }
 
-          // Check for excessive subdomains
-          if (subdomainCount > 3) {
-            score += 12;
-            urlIssues += 1;
-            urlAnalysis.suspicionIndicators.push(`Excessive subdomains (${subdomainCount})`);
-            categorizedReasons.urls.push(`🌐 Excessive subdomains detected (${subdomainCount})`);
-          }
+            // Shorteners
+            const shorteners = ['bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'ow.ly', 'is.gd', 'cutt.ly', 'shrtco.de'];
+            if (shorteners.some(s => uLower.includes(s))) {
+              score += 30;
+              categorizedReasons.urls.push(`🔗 Shortened URL used: ${u}`);
+            }
 
-          // Check for numbers in domain (potential DGA)
-          const numberCount = (domain.match(/\d/g) || []).length;
-          if (numberCount > 3) {
-            score += 15;
-            keywordMatches += 1;
-            urlAnalysis.suspicionIndicators.push('High number count in domain (potential DGA)');
-            categorizedReasons.advanced.push(`🔢 High number count in domain (potential DGA)`);
-          }
+            // Suspicious parameters (base64-like)
+            if (/\?[A-Za-z0-9+/=]{20,}/.test(u)) {
+              score += 18;
+              categorizedReasons.advanced.push(`🔒 Obfuscated/base64 parameters in URL: ${u}`);
+            }
 
-          // Check for brand impersonation in URL
-          const brands = ['paypal', 'amazon', 'microsoft', 'apple', 'google', 'facebook', 'instagram', 'netflix', 'bank', 'twitter', 'linkedin', 'youtube', 'whatsapp', 'telegram', 'skype', 'zoom', 'slack', 'discord', 'ebay', 'alibaba', 'aliexpress', 'walmart', 'target', 'bestbuy', 'costco', 'home depot', 'lowes', 'ikea', 'nordstrom', 'macys', 'kohls', 'jcpenney', 'sears', 'kmart', 'overstock', 'wayfair', 'etsy', 'craigslist', 'indeed', 'monster', 'glassdoor', 'ziprecruiter', 'dice', 'careerbuilder', 'snagajob',
-            'bkash','nagad','rocket','daraz','pathao','shohoz','chaldal','sonali','brac','dutch bangla','dbbl','city bank','janata bank','islami bank','robi','banglalink'];
-          
-          if (!isWhitelisted) {
-            for (const brand of brands) {
-              if (urlLower.includes(brand) && !urlLower.includes(`${brand}.com`) && !urlLower.includes(`${brand}.org`) && !urlLower.includes(`${brand}.net`) && !urlLower.includes(`${brand}.edu`)) {
-                score += 35;
-                brandImpersonation = true;
-                urlAnalysis.suspicionIndicators.push(`Brand impersonation: ${brand}`);
-                categorizedReasons.brand.push(`🎭 Brand impersonation detected: ${brand}`);
+            // Suspicious TLDs
+            const suspiciousEmailTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.club', '.online', '.site'];
+            for (const tld of suspiciousEmailTlds) {
+              if (uLower.includes(tld)) {
+                score += 24;
+                categorizedReasons.urls.push(`⚠️ Suspicious TLD in link: ${tld} (link: ${u})`);
                 break;
               }
             }
-          }
-          // Determine threat reasoning and verdict
-          if (score >= 70) {
-            urlAnalysis.threatReasoning = 'This URL exhibits multiple high-risk indicators including suspicious domain characteristics, potential brand impersonation, and security vulnerabilities that strongly suggest phishing or malicious intent.';
-            urlAnalysis.verdict = '🚨 Phishing URL';
-            urlAnalysis.recommendation = 'Do not visit this link. Report to your organization\'s security team or verify directly through the official website.';
-          } else if (score >= 30) {
-            urlAnalysis.threatReasoning = 'This URL shows some suspicious characteristics that warrant caution, though it may not be definitively malicious.';
-            urlAnalysis.verdict = '⚠️ Suspicious URL';
-            urlAnalysis.recommendation = 'Exercise caution. Verify the URL\'s legitimacy through official channels before proceeding.';
-          } else {
-            urlAnalysis.threatReasoning = 'This URL appears to follow standard security practices with no immediate red flags detected.';
-            urlAnalysis.verdict = '✅ Safe URL';
-            urlAnalysis.recommendation = 'This URL appears safe, but always verify the source and exercise normal security precautions.';
-          }
 
-          // URL Analysis Report (deeper scan)
-          urlAnalysis.analysisReport = {
-            domain: domain,
-            ipAddress: '185.244.182.11', // Placeholder - would be resolved in real implementation
-            sslCertificate: protocol === 'HTTPS' ? 'Valid (simulated)' : 'None',
-            redirectChain: urlLower.includes('redirect') ? '2 hops detected' : 'None detected',
-            blacklistCheck: score >= 70 ? 'Found on PhishTank (High risk)' : 'Not found on known blacklists',
-            whoisInfo: score >= 70 ? 'Recently registered (2 weeks ago)' : 'Standard registration',
-            urlLength: url.length,
-            encodingDetected: /[A-Za-z0-9+/=]{20,}/.test(url) ? 'Base64 detected' : 'None',
-            subdomainCount: subdomainCount,
-            parameterCount: url.includes('?') ? url.split('&').length : 0
-          };
-
-          urlAnalysisResults.push(urlAnalysis);
-          reasons.push(`🔍 URL analyzed: ${url}`);
-
-          // Additional heuristics: javascript/data URIs, mailto, SSL/WHOIS flags
-          if (/^javascript:/i.test(url.trim()) || urlLower.startsWith('data:')) {
-            score += 40;
-            urlIssues += 1;
-            urlAnalysis.suspicionIndicators.push('JavaScript or data URI usage in URL (obfuscation)');
-            categorizedReasons.advanced.push(`⚠️ JavaScript/data URI usage detected: ${url}`);
+            // Brand impersonation inside URLs or surrounding text
+            const brands = [
+              'paypal', 'amazon', 'microsoft', 'apple', 'google', 'netflix', 'bank', 'banking', 'paytm', 'aadhaar', 'uidai', 'gmail', 'outlook', 'hotmail',
+              'bkash', 'nagad', 'rocket', 'daraz', 'pathao', 'shohoz', 'chaldal', 'sonali', 'brac', 'dbbl', 'dutch bangla', 'city bank', 'janata bank', 'islami bank', 'robi', 'banglalink'
+            ];
+            for (const b of brands) {
+              if (uLower.includes(b) || text.toLowerCase().includes(b + ' account') || text.toLowerCase().includes(b + ' verification')) {
+                // If the visible URL doesn't clearly point to the official domain, flag
+                if (!uLower.includes(`${b}.com`) && !uLower.includes(`${b}.org`) && !uLower.includes(`${b}.net`)) {
+                  score += 35;
+                  categorizedReasons.brand.push(`🎭 Brand impersonation suspected around: ${b}`);
+                  break;
+                }
+              }
+            }
           }
 
-          if (urlLower.startsWith('mailto:')) {
+          // Grammar & formatting heuristics
+          const exclamationCount = (text.match(/!/g) || []).length;
+          if (exclamationCount >= 3) {
+            score += 8;
+            categorizedReasons.grammar.push(`❗ Excessive exclamation marks detected (${exclamationCount})`);
+          }
+
+          const allCapsWords = (text.match(/\b[A-Z]{3,}\b/g) || []).length;
+          if (allCapsWords >= 3) {
             score += 10;
-            categorizedReasons.context.push(`✉️ Mailto link detected: ${url}`);
+            categorizedReasons.grammar.push(`🔠 Excessive ALL CAPS words detected (${allCapsWords})`);
           }
 
-          // SSL / certificate checks (simulated)
-          if (urlAnalysis.analysisReport.sslCertificate === 'None') {
-            score += 22;
-            urlIssues += 1;
-            urlAnalysis.suspicionIndicators.push('No SSL/TLS certificate');
-            categorizedReasons.headers.push(`⚠️ No SSL/TLS certificate for URL: ${url}`);
+          const repeatedPunctuation = /([!?.]){2,}/.test(text);
+          if (repeatedPunctuation) {
+            score += 6;
+            categorizedReasons.grammar.push(`❗ Repeated punctuation detected`);
           }
 
-          if (urlAnalysis.analysisReport.whoisInfo && /recently registered/i.test(urlAnalysis.analysisReport.whoisInfo)) {
+          // Generic greetings and lack of personalization
+          const genericGreeting = /dear (customer|user|client|sir|madam)|hello dear|dear sir|dear madam/i.test(text);
+          if (genericGreeting) {
+            score += 10;
+            categorizedReasons.context.push(`👤 Generic greeting detected (no personalization)`);
+          }
+
+          // Attachment mentions and filenames
+          const fileMentionRegex = /\b([\w\- ]+\.(exe|scr|zip|rar|7z|iso|img|js|vbs|docm|xlsm|pptm|pdf|docx|xlsx|pptx))\b/gi;
+          const fileMatches = Array.from(new Set((text.match(fileMentionRegex) || []).map(s => s.trim())));
+          if (fileMatches.length > 0) {
+            for (const f of fileMatches) {
+              const ext = f.substring(f.lastIndexOf('.'));
+              if (/\.(exe|scr|js|vbs)$/i.test(ext)) {
+                score += 40;
+                categorizedReasons.attachments.push(`⚠️ Dangerous attachment filename referenced: ${f}`);
+              } else if (/\.(docm|xlsm|pptm)$/i.test(ext)) {
+                score += 35;
+                categorizedReasons.attachments.push(`⚠️ Macro-enabled Office file referenced: ${f}`);
+              } else {
+                score += 6;
+                categorizedReasons.attachments.push(`📎 Attachment mentioned: ${f}`);
+              }
+            }
+          }
+
+          // Password-protected attachment mention
+          if (/password.?protected|protected file|encrypted file|password:? \w+/i.test(text)) {
             score += 18;
-            categorizedReasons.advanced.push(`🕒 Recently registered domain detected (WHOIS): ${domain}`);
+            categorizedReasons.attachments.push(`🔒 Password-protected attachment mentioned`);
           }
+
+          // Header-like clues (From:, Reply-To:, Return-Path:, Received:)
+          const fromMatch = text.match(/from:\s*([^\n\r]+)/i);
+          const replyToMatch = text.match(/reply-to:\s*([^\n\r]+)/i);
+          if (fromMatch) {
+            const fromVal = fromMatch[1];
+            if (replyToMatch) {
+              const replyVal = replyToMatch[1];
+              if (!replyVal.includes('@') || (fromVal && replyVal && replyVal.split('@')[1] !== fromVal.split('@')[1])) {
+                score += 18;
+                categorizedReasons.headers.push(`⚠️ Sender/Reply-To mismatch or suspicious header: From(${fromVal}) Reply-To(${replyVal})`);
+              }
+            }
+          }
+
+          // Obfuscation heuristics: many dots, unicode homoglyphs, zero/oh swaps
+          if (/(\.|\-|_){6,}/.test(text)) {
+            score += 8;
+            categorizedReasons.advanced.push(`🔎 Excessive separators/dots detected (possible obfuscation)`);
+          }
+
+          if (/[\u0400-\u04FF\u0370-\u03FF]/.test(text)) {
+            score += 18;
+            categorizedReasons.advanced.push(`🌍 Non-Latin characters present (possible homograph / internationalized text)`);
+          }
+
+          // Social engineering patterns: urgency + verification + link
+          if ((foundUrls.length > 0 || text.toLowerCase().includes('link')) && (foundUrgent.length > 0 || foundAction.length > 0 || foundThreat.length > 0)) {
+            score += 20;
+            categorizedReasons.context.push(`🔗 Urgent request combined with link(s) — classic phishing pattern`);
+          }
+          break;
         }
 
-        // Store detailed analysis in result metadata
-        if (urlAnalysisResults.length > 0) {
-          metadata.urlAnalysis = urlAnalysisResults;
+        case 'file': {
+          // Basic file analysis
+          const fileAnalysisResults: any[] = [];
+          if (file) {
+            const fileName = file.name.toLowerCase();
+            const fileType = file.type.toLowerCase();
+
+            // Check for suspicious file extensions
+            const suspiciousExtensions = ['.exe', '.bat', '.cmd', '.scr', '.pif', '.com', '.vbs', '.js', '.jar'];
+            if (suspiciousExtensions.some(ext => fileName.endsWith(ext))) {
+              score += 40;
+              keywordMatches += 1; // Count as keyword match for suspicious extension
+              const ext = fileName.slice(fileName.lastIndexOf('.'));
+              reasons.push(`⚠️ Suspicious file extension detected: ${ext}`);
+              categorizedReasons.attachments.push(`⚠️ Suspicious file extension: ${ext}`);
+              fileAnalysisResults.push({ file: file.name, issue: 'Suspicious extension', detail: ext });
+            }
+
+            // Check file size (very large files might be suspicious)
+            if (file.size > 10 * 1024 * 1024) { // 10MB
+              score += 15;
+              urlIssues += 1; // Count as URL/file issue
+              const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+              reasons.push(`📁 Large file size may indicate malware (${sizeMB} MB)`);
+              categorizedReasons.attachments.push(`📁 Large file size: ${sizeMB} MB`);
+              fileAnalysisResults.push({ file: file.name, issue: 'Large file size', detail: `${sizeMB} MB` });
+            }
+
+            // Check for double extensions
+            if (fileName.split('.').length > 2) {
+              score += 25;
+              keywordMatches += 1; // Count as keyword match for double extension
+              reasons.push(`🎭 Double file extension detected: ${file.name}`);
+              categorizedReasons.advanced.push(`🎭 Double extension detected (masquerading): ${file.name}`);
+              fileAnalysisResults.push({ file: file.name, issue: 'Double extension', detail: file.name });
+            }
+
+            reasons.push(`📄 File analyzed: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+            fileAnalysisResults.push({ file: file.name, sizeKB: (file.size / 1024).toFixed(1) });
+
+            // Additional file heuristics: macro-enabled Office files, archives, disk images, suspicious MIME types
+            if (/\.(docm|xlsm|pptm)$/i.test(fileName)) {
+              score += 40;
+              categorizedReasons.attachments.push(`⚠️ Macro-enabled Office file detected: ${fileName}`);
+              fileAnalysisResults.push({ file: file.name, issue: 'Macro-enabled Office document' });
+              reasons.push(`⚠️ Macro-enabled Office file: ${fileName}`);
+            }
+
+            if (fileType.includes('zip') || /\.(zip|7z|rar|tar|gz)$/i.test(fileName)) {
+              score += 18;
+              categorizedReasons.attachments.push(`🗜️ Archive file may contain executables: ${fileName}`);
+              fileAnalysisResults.push({ file: file.name, issue: 'Archive container' });
+            }
+
+            if (/\.(iso|img|dmg)$/i.test(fileName)) {
+              score += 20;
+              categorizedReasons.attachments.push(`🖴 Disk image detected: ${fileName}`);
+              fileAnalysisResults.push({ file: file.name, issue: 'Disk image' });
+            }
+
+            if (/application\/(x-msdownload|x-msdos-program|x-sh|javascript)/i.test(fileType)) {
+              score += 35;
+              categorizedReasons.attachments.push(`⚠️ Suspicious executable MIME type: ${fileType || fileName}`);
+              fileAnalysisResults.push({ file: file.name, issue: 'Suspicious MIME type' });
+            }
+          } else if (text.trim()) {
+            // If no file but text provided, analyze the text
+            const suspiciousPatterns = ['malware', 'virus', 'trojan', 'ransomware', 'spyware'];
+            const foundSuspicious = suspiciousPatterns.filter(pattern => text.toLowerCase().includes(pattern));
+            if (foundSuspicious.length > 0) {
+              score += foundSuspicious.length * 20;
+              keywordMatches += foundSuspicious.length;
+              reasons.push(`🚨 Suspicious content detected: ${foundSuspicious.join(', ')}`);
+            }
+          }
+          break;
         }
-        break;
 
-      case 'ip':
-        // Enhanced IP analysis
-        const ipAnalysisResults: any[] = [];
-        const ipLines = text.split('\n').filter(line => line.trim());
-        
-        // Whitelist of legitimate/safe IPs
-        const safeIPWhitelist = [
-          '8.8.8.8',      // Google DNS
-          '1.1.1.1',      // Cloudflare DNS
-          '208.67.222.222', // OpenDNS
-          '140.82.121.4', // GitHub
-        ];
-        
-        for (const ip of ipLines) {
-          // Check if IP is on whitelist first
-          if (safeIPWhitelist.includes(ip.trim())) {
-            reasons.push(`✅ Legitimate IP (${ip}): Well-known public service`);
-            continue;
+        case 'url': {
+          // Enhanced URL analysis with structured output
+          const urlLines = text.split('\n').filter(line => line.trim());
+          const urlAnalysisResults: UrlAnalysisResult[] = [];
+
+          // Whitelist of legitimate/safe domains
+          const safeDomainsWhitelist = ['google.com', 'github.com', 'github.io', 'amazon.com', 'amazon.com.bd', 'microsoft.com', 'apple.com', 'facebook.com', 'instagram.com', 'twitter.com', 'linkedin.com', 'youtube.com', 'gmail.com', 'outlook.com', 'slack.com', 'discord.com', 'wikipedia.org', 'stackoverflow.com', 'reddit.com', 'quora.com', 'medium.com', 'dev.to', 'hashnode.com', 'npm.org', 'pypi.org', 'rubygems.org', 'crates.io', 'nuget.org', 'maven.org', 'docs.example.com'];
+
+          for (const url of urlLines) {
+            let itemScore = 0;
+            const itemReasons: string[] = [];
+            const urlLower = url.toLowerCase();
+            const urlAnalysis: UrlAnalysisResult = {
+              url: url,
+              generalOverview: '',
+              suspicionIndicators: [],
+              technicalDetails: {
+                protocol: '',
+                domainType: '',
+                tld: '',
+                subdomainCount: 0,
+                urlLength: 0,
+                hasParameters: false,
+                port: 0
+              },
+              threatReasoning: '',
+              verdict: '',
+              recommendation: '',
+              analysisReport: {
+                domain: '',
+                ipAddress: '',
+                sslCertificate: '',
+                redirectChain: '',
+                blacklistCheck: '',
+                whoisInfo: '',
+                urlLength: 0,
+                encodingDetected: '',
+                subdomainCount: 0,
+                parameterCount: 0
+              }
+            };
+
+            // Extract domain and technical details
+            const domainMatch = url.match(/https?:\/\/([^\/]+)/);
+            const domain = domainMatch ? domainMatch[1] : url;
+            const protocol = url.startsWith('https://') ? 'HTTPS' : 'HTTP';
+            const tld = domain.substring(domain.lastIndexOf('.'));
+            const subdomainCount = (domain.match(/\./g) || []).length - 1;
+
+            const normalizedHost = domain.replace(/:\d+$/, '').toLowerCase().replace(/^www\./, '');
+            const isWhitelisted = safeDomainsWhitelist.some(safeDomain =>
+              normalizedHost === safeDomain || normalizedHost.endsWith(`.${safeDomain}`)
+            );
+
+            if (urlLower.includes('paypal') || urlLower.includes('login') || urlLower.includes('verify')) {
+              urlAnalysis.generalOverview = 'This URL appears to be related to account verification or login services, potentially impersonating legitimate financial or service providers.';
+            } else if (urlLower.includes('amazon') || urlLower.includes('microsoft') || urlLower.includes('apple') || urlLower.includes('google')) {
+              urlAnalysis.generalOverview = 'This URL claims to represent a major technology or e-commerce company, possibly for account management or service notifications.';
+            } else if (/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(url)) {
+              urlAnalysis.generalOverview = 'This is an IP-based URL that bypasses traditional domain name resolution, commonly used to evade detection.';
+            } else {
+              urlAnalysis.generalOverview = 'This URL appears to be a web address that may contain suspicious or potentially harmful content.';
+            }
+
+            urlAnalysis.technicalDetails = {
+              protocol: protocol,
+              domainType: /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain) ? 'IP Address' : 'FQDN',
+              tld: tld,
+              subdomainCount: subdomainCount,
+              urlLength: url.length,
+              hasParameters: url.includes('?'),
+              port: url.match(/:(\d+)/) ? parseInt(url.match(/:(\d+)/)![1]) : (protocol === 'HTTPS' ? 443 : 80)
+            };
+
+            if (/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(url)) {
+              itemScore += 40;
+              urlIssues += 1;
+              urlAnalysis.suspicionIndicators.push('Direct IP address usage instead of domain name');
+              itemReasons.push('🌐 IP-based URL detected');
+              categorizedReasons.urls.push(`🌐 IP-based URL detected: ${url}`);
+            }
+
+            if (url.startsWith('http://') && !url.startsWith('https://')) {
+              itemScore += 25;
+              urlIssues += 1;
+              urlAnalysis.suspicionIndicators.push('Uses unencrypted HTTP protocol');
+              itemReasons.push('⚠️ Unencrypted HTTP protocol');
+              categorizedReasons.headers.push(`⚠️ Unencrypted HTTP protocol: ${url}`);
+            }
+
+            const shorteners = ['bit.ly', 'tinyurl.com', 'goo.gl', 'ow.ly', 't.co', 'is.gd', 'buff.ly', 'adf.ly', 'tiny.cc', 'cli.gs', 'qr.net', '1url.com', 'tweez.me', 'v.gd', 'tr.im', 'lnkd.in', 'db.tt', 'qr.ae', 'adfoc.us', 'cur.lv', 'tiny.pl', 'prettylinkpro.com', 'shrinkonce.com', 'shrtfly.com', 'shortquik.com', 'fastt.ly', 'short.pe', 'vzturl.com', 'cutt.ly', 'shorturl.at', 'tiny.one', 'shorte.st', 'short.io', 'rebrand.ly', 'bl.ink', 'linktree.com', 'bit.do'];
+            if (shorteners.some(shortener => urlLower.includes(shortener))) {
+              itemScore += 35;
+              urlIssues += 1;
+              urlAnalysis.suspicionIndicators.push('URL shortening service detected');
+              itemReasons.push('🔗 Shortened URL detected');
+              categorizedReasons.urls.push(`🔗 Shortened URL detected: ${url}`);
+            }
+
+            const suspiciousTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.club', '.online', '.site', '.website', '.space', '.fun', '.tech', '.click', '.link', '.buzz', '.work', '.party', '.review', '.science', '.business', '.network', '.company', '.email', '.download', '.trade', '.bid', '.webcam', '.loan', '.win', '.date', '.faith', '.racing', '.review', '.science', '.accountant', '.cricket', '.football', '.golf', '.tennis', '.casino', '.poker', '.bet', '.blackjack', '.roulette', '.porn', '.sex', '.adult', '.xxx'];
+            if (suspiciousTlds.some(tld => urlLower.endsWith(tld))) {
+              itemScore += 28;
+              urlIssues += 1;
+              const foundTld = suspiciousTlds.find(tld => urlLower.endsWith(tld));
+              urlAnalysis.suspicionIndicators.push(`Free or suspicious TLD: ${foundTld}`);
+              itemReasons.push(`⚠️ Suspicious TLD: ${foundTld}`);
+              categorizedReasons.urls.push(`⚠️ Suspicious TLD detected for: ${url}`);
+            }
+
+            const portMatch = url.match(/:(\d+)/);
+            if (portMatch) {
+              const port = parseInt(portMatch[1]);
+              if (port !== 80 && port !== 443 && port !== 8080 && port !== 8443) {
+                itemScore += 15;
+                urlIssues += 1;
+                urlAnalysis.suspicionIndicators.push(`Non-standard port usage: ${port}`);
+                itemReasons.push(`🔌 Non-standard port: ${port}`);
+                categorizedReasons.advanced.push(`🔌 Non-standard port detected: ${port} in ${url}`);
+              }
+            }
+
+            if (url.includes('?')) {
+              const sensitiveParams = ['login', 'password', 'verify', 'account', 'security', 'bank', 'paypal', 'amazon', 'credit', 'card', 'ssn', 'social', 'security', 'pin', 'cvv', 'otp', 'token', 'auth', 'session', 'redirect', 'return', 'callback'];
+              const foundParams = sensitiveParams.filter(param => urlLower.includes(param));
+              if (foundParams.length > 0) {
+                itemScore += foundParams.length * 12;
+                sensitiveRequests += foundParams.length;
+                urlAnalysis.suspicionIndicators.push(`Sensitive parameters: ${foundParams.join(', ')}`);
+                itemReasons.push(`🔐 Sensitive parameters detected`);
+                categorizedReasons.context.push(`🔐 Sensitive parameters in ${url}: ${foundParams.join(', ')}`);
+              }
+
+              const paramMatch = url.match(/\?([^#]*)/);
+              if (paramMatch) {
+                const params = paramMatch[1];
+                if (/[A-Za-z0-9+/=]{20,}/.test(params)) {
+                  itemScore += 18;
+                  urlIssues += 1;
+                  urlAnalysis.suspicionIndicators.push('Base64-encoded parameters');
+                  itemReasons.push('🔒 Base64 parameters (obfuscation)');
+                  categorizedReasons.advanced.push(`🔒 Base64-encoded parameters in ${url}`);
+                }
+              }
+            }
+
+            const suspiciousUrlKeywords = ['login', 'password', 'verify', 'account', 'security', 'bank', 'paypal', 'amazon', 'microsoft', 'apple', 'google', 'facebook', 'instagram', 'netflix', 'update', 'confirm', 'validate', 'authenticate', 'secure', 'safe', 'trusted', 'official', 'support', 'help', 'service', 'admin', 'root', 'system', 'alert', 'warning', 'error', 'failed', 'suspended', 'locked', 'blocked', 'disabled', 'urgent', 'immediate', 'action', 'required', 'click', 'download', 'open', 'attachment', 'file', 'exe', 'zip', 'rar', 'pdf', 'doc', 'xls', 'ppt', 'free', 'prize', 'winner', 'lottery', 'claim', 'gift', 'bonus', 'reward', 'cash', 'money', 'bitcoin', 'crypto', 'wallet', 'investment', 'trading', 'forex', 'binary', 'options', 'scam', 'fraud', 'phish', 'hack', 'virus', 'malware', 'trojan', 'ransomware', 'spyware'];
+            if (!isWhitelisted) {
+              const foundUrlKeywords = suspiciousUrlKeywords.filter(kw => urlLower.includes(kw));
+              if (foundUrlKeywords.length > 0) {
+                itemScore += foundUrlKeywords.length * 15;
+                keywordMatches += foundUrlKeywords.length;
+                urlAnalysis.suspicionIndicators.push(`Keywords: ${foundUrlKeywords.slice(0, 3).join(', ')}`);
+                itemReasons.push(`⚠️ Suspicious keywords`);
+                categorizedReasons.context.push(`⚠️ Suspicious keywords in ${url}`);
+              }
+            }
+
+            if (urlLower.includes('redirect') || urlLower.includes('return') || urlLower.includes('callback') || urlLower.includes('next')) {
+              itemScore += 10;
+              urlIssues += 1;
+              itemReasons.push('🔄 Potential redirect chain');
+              categorizedReasons.advanced.push(`🔄 URL redirect chain in ${url}`);
+            }
+
+            if (subdomainCount > 3) {
+              itemScore += 12;
+              urlIssues += 1;
+              itemReasons.push(`🌐 Too many subdomains (${subdomainCount})`);
+              categorizedReasons.urls.push(`🌐 Excessive subdomains in ${url}`);
+            }
+
+            const numberCountInDomain = (domain.match(/\d/g) || []).length;
+            if (numberCountInDomain > 3) {
+              itemScore += 15;
+              itemReasons.push('🔢 High digit count in domain');
+            }
+
+            const brandsList = ['paypal', 'amazon', 'microsoft', 'apple', 'google', 'facebook', 'instagram', 'netflix', 'bank', 'twitter', 'linkedin', 'youtube', 'whatsapp', 'telegram', 'skype', 'zoom', 'slack', 'discord', 'ebay', 'alibaba', 'aliexpress', 'walmart', 'target', 'bestbuy', 'costco', 'home depot', 'lowes', 'ikea', 'nordstrom', 'macys', 'kohls', 'jcpenney', 'sears', 'kmart', 'overstock', 'wayfair', 'etsy', 'craigslist', 'indeed', 'monster', 'glassdoor', 'ziprecruiter', 'dice', 'careerbuilder', 'snagajob', 'bkash', 'nagad', 'rocket', 'daraz', 'pathao', 'shohoz', 'chaldal', 'sonali', 'brac', 'dutch bangla', 'dbbl', 'city bank', 'janata bank', 'islami bank', 'robi', 'banglalink'];
+            if (!isWhitelisted) {
+              for (const brand of brandsList) {
+                if (urlLower.includes(brand) && !urlLower.includes(`${brand}.com`) && !urlLower.includes(`${brand}.org`) && !urlLower.includes(`${brand}.net`) && !urlLower.includes(`${brand}.edu`)) {
+                  itemScore += 35;
+                  brandImpersonation = true;
+                  itemReasons.push(`🎭 Brand impersonation: ${brand}`);
+                  categorizedReasons.brand.push(`🎭 Brand impersonation detected for: ${brand} in ${url}`);
+                  break;
+                }
+              }
+            }
+
+            if (itemScore >= 70) urlAnalysis.verdict = '🚨 Phishing URL';
+            else if (itemScore >= 30) urlAnalysis.verdict = '⚠️ Suspicious URL';
+            else urlAnalysis.verdict = '✅ Safe URL';
+
+            urlAnalysisResults.push(urlAnalysis);
+            metadata.individualResults?.push({
+              item: url,
+              score: Math.min(itemScore, 100),
+              verdict: urlAnalysis.verdict,
+              riskLevel: itemScore < 30 ? 'safe' : itemScore < 70 ? 'suspicious' : 'phishing',
+              reasons: itemReasons.length > 0 ? itemReasons : ['No immediate red flags detected']
+            });
+
+            // Update main score if this item is more dangerous
+            if (itemScore > score) score = itemScore;
+            reasons.push(`${urlAnalysis.verdict}: ${url}`);
           }
-          // Basic IP validation
-          const ipRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-          if (!ipRegex.test(ip.trim())) {
-            reasons.push(`❌ Invalid IP format: ${ip}`);
-            continue;
-          }
 
-          const parts = ip.split('.').map(Number);
+          if (urlAnalysisResults.length > 0) metadata.urlAnalysis = urlAnalysisResults;
+          break;
+        }
 
-          // Check for invalid IP ranges
-          if (parts.some(p => p < 0 || p > 255)) {
-            reasons.push(`❌ Invalid IP range: ${ip}`);
-            continue;
-          }
+        case 'ip': {
+          // Enhanced IP analysis
+          const ipAnalysisResultsList: any[] = [];
+          const ipLines = text.split('\n').filter(line => line.trim());
 
-          // Private IPs (RFC 1918) - suspicious in phishing contexts (enhanced like email section)
-          if ((parts[0] === 10) ||
+          // Whitelist of legitimate/safe IPs
+          const safeIPWhitelist = ['8.8.8.8', '1.1.1.1', '208.67.222.222', '140.82.121.4'];
+
+          for (const ip of ipLines) {
+            let itemScore = 0;
+            const itemReasons: string[] = [];
+            const ipTrimmed = ip.trim();
+
+            // Check if IP is on whitelist first
+            if (safeIPWhitelist.includes(ipTrimmed)) {
+              metadata.individualResults?.push({
+                item: ipTrimmed,
+                score: 0,
+                verdict: '✅ Legitimate IP',
+                riskLevel: 'safe',
+                reasons: ['Well-known public service']
+              });
+              reasons.push(`✅ Legitimate IP (${ipTrimmed}): Well-known public service`);
+              continue;
+            }
+
+            // Basic IP validation
+            const ipRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+            if (!ipRegex.test(ipTrimmed)) {
+              reasons.push(`❌ Invalid IP format: ${ipTrimmed}`);
+              continue;
+            }
+
+            const parts = ipTrimmed.split('.').map(Number);
+
+            // Check for invalid IP ranges
+            if (parts.some(p => p < 0 || p > 255)) {
+              reasons.push(`❌ Invalid IP range: ${ipTrimmed}`);
+              continue;
+            }
+
+            // Private IPs (RFC 1918)
+            if ((parts[0] === 10) ||
               (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
               (parts[0] === 192 && parts[1] === 168) ||
-              (parts[0] === 169 && parts[1] === 254)) { // APIPA
-            score += 35; // Increased from 25 to 35 like email section
-            urlIssues += 1;
-            reasons.push(`🏠 Private IP address (suspicious in phishing): ${ip}`);
-            categorizedReasons.advanced.push(`🏠 Private IP detected (RFC 1918): ${ip}`);
-          }
+              (parts[0] === 169 && parts[1] === 254)) {
+              itemScore += 35;
+              urlIssues += 1;
+              itemReasons.push('🏠 Private IP address');
+              categorizedReasons.advanced.push(`🏠 Private IP detected (RFC 1918): ${ipTrimmed}`);
+            }
 
-          // Loopback addresses
-          if (parts[0] === 127) {
-            score += 15;
-            urlIssues += 1;
-            reasons.push(`🔄 Loopback IP address: ${ip}`);
-            categorizedReasons.advanced.push(`🔄 Loopback IP detected (127.x.x.x): ${ip}`);
-          }
+            // Loopback addresses
+            if (parts[0] === 127) {
+              itemScore += 15;
+              urlIssues += 1;
+              itemReasons.push('🔄 Loopback IP address');
+              categorizedReasons.advanced.push(`🔄 Loopback IP detected (127.x.x.x): ${ipTrimmed}`);
+            }
 
-          // Link-local addresses
-          if (parts[0] === 169 && parts[1] === 254) {
-            score += 20;
-            urlIssues += 1;
-            reasons.push(`🌐 Link-local IP address: ${ip}`);
-            categorizedReasons.context.push(`🌐 Link-local IP detected (APIPA): ${ip}`);
-          }
+            // Link-local addresses
+            if (parts[0] === 169 && parts[1] === 254) {
+              itemScore += 20;
+              urlIssues += 1;
+              itemReasons.push('🌐 Link-local IP address');
+              categorizedReasons.context.push(`🌐 Link-local IP detected (APIPA): ${ipTrimmed}`);
+            }
 
-          // Reserved ranges (IANA)
-          if (parts[0] === 0 ||
-              (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) || // TEST-NET-1
-              (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) || // TEST-NET-2
-              (parts[0] === 203 && parts[1] === 0 && parts[2] === 113) || // TEST-NET-3
-              parts[0] >= 224) { // Multicast and reserved
-            score += 18;
-            urlIssues += 1;
-            reasons.push(`⚠️ Reserved/Testing IP range: ${ip}`);
-            categorizedReasons.advanced.push(`⚠️ Reserved/Testing IP range: ${ip}`);
-          }
+            // Reserved ranges (IANA)
+            if (parts[0] === 0 ||
+              (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) ||
+              (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) ||
+              (parts[0] === 203 && parts[1] === 0 && parts[2] === 113) ||
+              parts[0] >= 224) {
+              itemScore += 18;
+              urlIssues += 1;
+              itemReasons.push('⚠️ Reserved/Testing IP range');
+              categorizedReasons.advanced.push(`⚠️ Reserved/Testing IP range: ${ipTrimmed}`);
+            }
 
-          // Check for sequential IPs (potential scanning)
-          const isSequential = parts.every((part, index) => index === 0 || part === parts[index - 1] + 1 || part === parts[index - 1] - 1);
-          if (isSequential && parts.length === 4) {
-            score += 12;
-            keywordMatches += 1;
-            reasons.push(`🔢 Sequential IP pattern: ${ip}`);
-            categorizedReasons.context.push(`🔢 Sequential IP pattern detected (potential scanning): ${ip}`);
-          }
+            // Check for sequential IPs
+            const isSequential = parts.every((part, index) => index === 0 || part === parts[index - 1] + 1 || part === parts[index - 1] - 1);
+            if (isSequential && parts.length === 4) {
+              itemScore += 12;
+              keywordMatches += 1;
+              itemReasons.push('🔢 Sequential IP pattern');
+              categorizedReasons.context.push(`🔢 Sequential IP pattern detected (potential scanning): ${ipTrimmed}`);
+            }
 
-          // Check for suspicious patterns (all same digits, etc.)
-          if (parts.every(p => p === parts[0])) {
-            score += 22;
-            keywordMatches += 1;
-            reasons.push(`🚨 Identical digits pattern: ${ip}`);
-            categorizedReasons.advanced.push(`🚨 Identical digits pattern (suspicious): ${ip}`);
-          }
+            // Check for suspicious patterns
+            if (parts.every(p => p === parts[0])) {
+              itemScore += 22;
+              keywordMatches += 1;
+              itemReasons.push('🚨 Identical digits pattern');
+              categorizedReasons.advanced.push(`🚨 Identical digits pattern (suspicious): ${ipTrimmed}`);
+            }
 
-          // Check for round numbers (potential fake IPs)
-          if (parts.every(p => p % 10 === 0)) {
-            score += 15;
-            keywordMatches += 1;
-            reasons.push(`🔢 Round number pattern: ${ip}`);
-            categorizedReasons.context.push(`🔢 Round number pattern (potential fake IP): ${ip}`);
-          }
+            // Check for round numbers
+            if (parts.every(p => p % 10 === 0)) {
+              itemScore += 15;
+              keywordMatches += 1;
+              itemReasons.push('🔢 Round number pattern');
+              categorizedReasons.context.push(`🔢 Round number pattern (potential fake IP): ${ipTrimmed}`);
+            }
 
-          // Check for known malicious IP ranges (examples - in real implementation, use threat intelligence)
-          // REMOVED: Previously marked known DNS servers as suspicious, but these are legitimate
-
-          // Check for bogon IPs (unassigned)
-          if ((parts[0] === 192 && parts[1] === 0 && parts[2] === 0) ||
+            // Check for bogon IPs
+            if ((parts[0] === 192 && parts[1] === 0 && parts[2] === 0) ||
               (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) ||
               (parts[0] === 198 && parts[1] === 18) ||
               (parts[0] === 198 && parts[1] === 19) ||
               (parts[0] >= 240)) {
-            score += 20;
-            urlIssues += 1;
-            reasons.push(`🚫 Bogon IP (unassigned/reserved): ${ip}`);
-            categorizedReasons.advanced.push(`🚫 Bogon IP detected (unassigned): ${ip}`);
-          }
-
-          // Check for carrier-grade NAT
-          if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) {
-            score += 8;
-            urlIssues += 1;
-            reasons.push(`📡 Carrier-grade NAT IP: ${ip}`);
-            categorizedReasons.context.push(`📡 Carrier-grade NAT IP detected: ${ip}`);
-          }
-          reasons.push(`📍 IP analyzed: ${ip}`);
-          ipAnalysisResults.push({ ip });
-
-          // Extra IP heuristics: cloud hosting indicators, potential Tor/anonymous ranges, .0/.255 edgecases
-          const cloudPrefixes = [/^34\./, /^52\./, /^44\./, /^18\./, /^3\./, /^35\./];
-          if (cloudPrefixes.some(rx => rx.test(ip.trim()))) {
-            score += 12;
-            urlIssues += 1;
-            reasons.push(`☁️ IP hosted on common cloud provider range: ${ip}`);
-            categorizedReasons.advanced.push(`☁️ Cloud-hosted IP detected: ${ip}`);
-          }
-
-          if (ip.trim().endsWith('.0') || ip.trim().endsWith('.255')) {
-            score += 8;
-            reasons.push(`⚠️ IP ends with edge octet (.0/.255): ${ip}`);
-            categorizedReasons.context.push(`⚠️ Unusual IP octet edge: ${ip}`);
-          }
-
-          // Simple heuristic for Tor-like addresses (placeholder ranges)
-          if (/^185\.|^51\.|^95\./.test(ip.trim())) {
-            score += 18;
-            reasons.push(`🕸️ IP within common anonymous/Tor exit ranges: ${ip}`);
-            categorizedReasons.advanced.push(`🕸️ Potential Tor/anonymous IP: ${ip}`);
-          }
-        }
-        if (ipAnalysisResults.length > 0) metadata.ipAnalysis = ipAnalysisResults;
-        break;
-
-      case 'domain':
-        // Enhanced domain analysis
-        const domainAnalysisResults: any[] = [];
-        const domainLines = text.split('\n').filter(line => line.trim());
-        
-        // Whitelist of legitimate/safe domains
-        const safeDomainWhitelist = ['google.com', 'github.com', 'github.io', 'amazon.com', 'microsoft.com', 'apple.com', 'facebook.com', 'instagram.com', 'twitter.com', 'linkedin.com', 'youtube.com', 'gmail.com', 'outlook.com', 'slack.com', 'discord.com', 'wikipedia.org', 'stackoverflow.com', 'reddit.com', 'quora.com', 'medium.com', 'dev.to', 'hashnode.com', 'npm.org', 'pypi.org', 'rubygems.org', 'crates.io', 'nuget.org', 'maven.org', 'verizon.co.jp', 'harvard.edu'];
-        
-        for (const domain of domainLines) {
-          const domainLower = domain.toLowerCase().trim();
-          
-          // Check if domain is on whitelist
-          if (safeDomainWhitelist.includes(domainLower)) {
-            reasons.push(`✅ Legitimate domain (${domain}): Trusted service provider`);
-            continue;
-          }
-
-          // Basic domain validation
-          const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
-          if (!domainRegex.test(domainLower)) {
-            reasons.push(`❌ Invalid domain format: ${domain}`);
-            continue;
-          }
-
-          // Extract TLD
-          const tld = domainLower.substring(domainLower.lastIndexOf('.'));
-          const domainWithoutTld = domainLower.substring(0, domainLower.lastIndexOf('.'));
-
-          // Check for suspicious TLDs (expanded list, enhanced like email section)
-          const suspiciousTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.club', '.online', '.site', '.website', '.space', '.fun', '.tech', '.click', '.link', '.buzz', '.work', '.party', '.review', '.science', '.business', '.network', '.company', '.email', '.download', '.trade', '.bid', '.webcam', '.loan', '.win', '.date', '.faith', '.racing', '.review', '.science', '.accountant', '.cricket', '.football', '.golf', '.tennis', '.casino', '.poker', '.bet', '.blackjack', '.roulette', '.porn', '.sex', '.adult', '.xxx'];
-          if (suspiciousTlds.includes(tld)) {
-            score += 35; // Increased from 28 to 35 like email section
-            urlIssues += 1;
-            reasons.push(`⚠️ Suspicious TLD (commonly used for malicious sites): ${domain}`);
-            categorizedReasons.urls.push(`⚠️ Suspicious TLD: ${tld}`);
-          }
-
-          // Check for premium TLDs that might be abused
-          const premiumTlds = ['.io', '.ai', '.co', '.app', '.dev', '.tech', '.digital', '.cloud', '.store', '.shop', '.blog', '.news', '.media', '.agency', '.studio', '.design', '.group', '.team', '.center', '.zone', '.world', '.life', '.live', '.today', '.guru', '.expert', '.pro', '.solutions', '.systems', '.software', '.network', '.digital', '.online', '.website', '.site', '.space', '.tech', '.store', '.shop', '.blog', '.news', '.media', '.agency', '.studio', '.design', '.group', '.team', '.center', '.zone', '.world', '.life', '.live', '.today', '.guru', '.expert', '.pro', '.solutions', '.systems', '.software'];
-          if (premiumTlds.includes(tld)) {
-            score += 8;
-            urlIssues += 1;
-            reasons.push(`💎 Premium TLD (higher risk): ${domain}`);
-          }
-
-          // Check for long domains (potential DGA or typosquatting)
-          if (domain.length > 50) {
-            score += 18;
-            keywordMatches += 1;
-            reasons.push(`📏 Unusually long domain name (potential DGA/typosquatting): ${domain}`);
-            categorizedReasons.advanced.push(`📏 Unusually long domain (potential DGA): ${domain.slice(0, 40)}...`);
-          }
-
-          // Check for very short domains (suspicious)
-          if (domainWithoutTld.length < 3) {
-            score += 15;
-            keywordMatches += 1;
-            reasons.push(`📏 Very short domain name: ${domain}`);
-            categorizedReasons.advanced.push(`📏 Very short domain name: ${domain}`);
-          }
-
-          // Check for numbers in domain (potential DGA)
-          const numberCount = (domain.match(/\d/g) || []).length;
-          if (numberCount > 5) {
-            score += 20;
-            keywordMatches += 1;
-            reasons.push(`🔢 High number of digits in domain (potential DGA): ${domain}`);
-            categorizedReasons.advanced.push(`🔢 High number count in domain (potential DGA): ${numberCount} digits`);
-          }
-
-          // Check for consecutive numbers (very suspicious)
-          if (/\d{3,}/.test(domainWithoutTld)) {
-            score += 25;
-            keywordMatches += 1;
-            reasons.push(`🔢 Consecutive numbers in domain: ${domain}`);
-            categorizedReasons.advanced.push(`🔢 Consecutive numbers detected in domain: ${domain}`);
-          }
-
-          // Check for hyphens (potential typosquatting)
-          const hyphenCount = (domain.match(/-/g) || []).length;
-          if (hyphenCount > 2) {
-            score += 12;
-            keywordMatches += 1;
-            reasons.push(`➖ Excessive hyphens in domain: ${domain}`);
-            categorizedReasons.grammar.push(`➖ Excessive hyphens detected (${hyphenCount}): ${domain}`);
-          }
-
-          // Check for repeated characters
-          const repeatedChars = /(.)\1{2,}/;
-          if (repeatedChars.test(domainWithoutTld)) {
-            score += 15;
-            keywordMatches += 1;
-            reasons.push(`🔁 Repeated characters in domain: ${domain}`);
-            categorizedReasons.grammar.push(`🔁 Repeated characters detected: ${domain}`);
-          }
-
-          // Check for suspicious keywords in domain (enhanced like email section) - skip for whitelisted
-          // Only check keywords for non-whitelisted domains
-          if (!safeDomainWhitelist.includes(domainLower)) {
-            const suspiciousDomainKeywords = ['login', 'password', 'verify', 'account', 'security', 'bank', 'paypal', 'amazon', 'microsoft', 'apple', 'google', 'facebook', 'instagram', 'netflix', 'update', 'confirm', 'validate', 'authenticate', 'secure', 'safe', 'trusted', 'official', 'support', 'help', 'service', 'admin', 'root', 'system', 'alert', 'warning', 'error', 'failed', 'suspended', 'locked', 'blocked', 'disabled', 'urgent', 'immediate', 'action', 'required', 'click', 'download', 'open', 'attachment', 'file', 'exe', 'zip', 'rar', 'pdf', 'doc', 'xls', 'ppt', 'free', 'prize', 'winner', 'lottery', 'claim', 'gift', 'bonus', 'reward', 'cash', 'money', 'bitcoin', 'crypto', 'wallet', 'investment', 'trading', 'forex', 'binary', 'options', 'scam', 'fraud', 'phish', 'hack', 'virus', 'malware', 'trojan', 'ransomware', 'spyware'];
-            const foundDomainKeywords = suspiciousDomainKeywords.filter(kw => domainLower.includes(kw));
-            if (foundDomainKeywords.length > 0) {
-              score += foundDomainKeywords.length * 15; // Increased from 10 to 15 like email section
-              keywordMatches += foundDomainKeywords.length;
-              reasons.push(`⚠️ Suspicious keywords in domain: ${foundDomainKeywords.join(', ')} (${domain})`);
-              categorizedReasons.context.push(`⚠️ Suspicious keywords: ${foundDomainKeywords.slice(0, 3).join(', ')}`);
+              itemScore += 20;
+              urlIssues += 1;
+              itemReasons.push('🚫 Bogon IP (unassigned)');
+              categorizedReasons.advanced.push(`🚫 Bogon IP detected (unassigned): ${ipTrimmed}`);
             }
-          }
 
-          // Check for brand impersonation (enhanced like email section) - skip for whitelisted
-          if (!safeDomainWhitelist.includes(domainLower)) {
-            const brands = ['paypal', 'amazon', 'microsoft', 'apple', 'google', 'facebook', 'instagram', 'netflix', 'bank', 'twitter', 'linkedin', 'youtube', 'whatsapp', 'telegram', 'skype', 'zoom', 'slack', 'discord', 'ebay', 'alibaba', 'aliexpress', 'walmart', 'target', 'bestbuy', 'costco', 'home depot', 'lowes', 'ikea', 'nordstrom', 'macys', 'kohls', 'jcpenney', 'sears', 'kmart', 'overstock', 'wayfair', 'etsy', 'craigslist', 'indeed', 'monster', 'glassdoor', 'ziprecruiter', 'dice', 'careerbuilder', 'snagajob',
-              'bkash','nagad','rocket','daraz','pathao','shohoz','chaldal','sonali','brac','dutch bangla','dbbl','city bank','janata bank','islami bank','robi','banglalink'];
-            for (const brand of brands) {
-              if (domainLower.includes(brand) && !domainLower.includes(`${brand}.com`) && !domainLower.includes(`${brand}.org`) && !domainLower.includes(`${brand}.net`) && !domainLower.includes(`${brand}.edu`)) {
-                score += 35; // Increased from 30 to 35 like email section
+            // Check for carrier-grade NAT
+            if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) {
+              itemScore += 8;
+              urlIssues += 1;
+              itemReasons.push('📡 Carrier-grade NAT IP');
+              categorizedReasons.context.push(`📡 Carrier-grade NAT IP detected: ${ipTrimmed}`);
+            }
+
+            const cloudPrefixes = [/^34\./, /^52\./, /^44\./, /^18\./, /^3\./, /^35\./];
+            if (cloudPrefixes.some(rx => rx.test(ipTrimmed))) {
+              itemScore += 12;
+              urlIssues += 1;
+              itemReasons.push('☁️ Cloud provider range');
+              categorizedReasons.advanced.push(`☁️ Cloud-hosted IP detected: ${ipTrimmed}`);
+            }
+
+            if (ipTrimmed.endsWith('.0') || ipTrimmed.endsWith('.255')) {
+              itemScore += 8;
+              itemReasons.push('⚠️ Edge octet (.0/.255)');
+              categorizedReasons.context.push(`⚠️ Unusual IP octet edge: ${ipTrimmed}`);
+            }
+
+            if (/^185\.|^51\.|^95\./.test(ipTrimmed)) {
+              itemScore += 18;
+              itemReasons.push('🕸️ anonymous/Tor exit range');
+              categorizedReasons.advanced.push(`🕸️ Potential Tor/anonymous IP: ${ipTrimmed}`);
+            }
+
+            let verdict = '✅ Safe IP';
+            if (itemScore >= 70) verdict = '🚨 Phishing/Malicious IP';
+            else if (itemScore >= 30) verdict = '⚠️ Suspicious IP';
+
+            metadata.individualResults?.push({
+              item: ipTrimmed,
+              score: Math.min(itemScore, 100),
+              verdict: verdict,
+              riskLevel: itemScore < 30 ? 'safe' : itemScore < 70 ? 'suspicious' : 'phishing',
+              reasons: itemReasons.length > 0 ? itemReasons : ['No immediate red flags detected']
+            });
+
+            if (itemScore > score) score = itemScore;
+            reasons.push(`${verdict}: ${ipTrimmed}`);
+            ipAnalysisResultsList.push({ ip: ipTrimmed });
+          }
+          if (ipAnalysisResultsList.length > 0) metadata.ipAnalysis = ipAnalysisResultsList;
+          break;
+        }
+
+        case 'domain': {
+          // Enhanced domain analysis
+          const domainAnalysisResults: any[] = [];
+          const domainLines = text.split('\n').filter(line => line.trim());
+
+          // Whitelist of legitimate/safe domains
+          const safeDomainWhitelist = ['google.com', 'github.com', 'github.io', 'amazon.com', 'microsoft.com', 'apple.com', 'facebook.com', 'instagram.com', 'twitter.com', 'linkedin.com', 'youtube.com', 'gmail.com', 'outlook.com', 'slack.com', 'discord.com', 'wikipedia.org', 'stackoverflow.com', 'reddit.com', 'quora.com', 'medium.com', 'dev.to', 'hashnode.com', 'npm.org', 'pypi.org', 'rubygems.org', 'crates.io', 'nuget.org', 'maven.org', 'verizon.co.jp', 'harvard.edu'];
+
+          for (const domain of domainLines) {
+            const domainLower = domain.toLowerCase().trim();
+
+            // Check if domain is on whitelist
+            if (safeDomainWhitelist.includes(domainLower)) {
+              reasons.push(`✅ Legitimate domain (${domain}): Trusted service provider`);
+              continue;
+            }
+
+            // Basic domain validation
+            const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
+            if (!domainRegex.test(domainLower)) {
+              reasons.push(`❌ Invalid domain format: ${domain}`);
+              continue;
+            }
+
+            // Extract TLD
+            const tld = domainLower.substring(domainLower.lastIndexOf('.'));
+            const domainWithoutTld = domainLower.substring(0, domainLower.lastIndexOf('.'));
+
+            // Check for suspicious TLDs (expanded list, enhanced like email section)
+            const suspiciousTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.club', '.online', '.site', '.website', '.space', '.fun', '.tech', '.click', '.link', '.buzz', '.work', '.party', '.review', '.science', '.business', '.network', '.company', '.email', '.download', '.trade', '.bid', '.webcam', '.loan', '.win', '.date', '.faith', '.racing', '.review', '.science', '.accountant', '.cricket', '.football', '.golf', '.tennis', '.casino', '.poker', '.bet', '.blackjack', '.roulette', '.porn', '.sex', '.adult', '.xxx'];
+            if (suspiciousTlds.includes(tld)) {
+              score += 35; // Increased from 28 to 35 like email section
+              urlIssues += 1;
+              reasons.push(`⚠️ Suspicious TLD (commonly used for malicious sites): ${domain}`);
+              categorizedReasons.urls.push(`⚠️ Suspicious TLD: ${tld}`);
+            }
+
+            // Check for premium TLDs that might be abused
+            const premiumTlds = ['.io', '.ai', '.co', '.app', '.dev', '.tech', '.digital', '.cloud', '.store', '.shop', '.blog', '.news', '.media', '.agency', '.studio', '.design', '.group', '.team', '.center', '.zone', '.world', '.life', '.live', '.today', '.guru', '.expert', '.pro', '.solutions', '.systems', '.software', '.network', '.digital', '.online', '.website', '.site', '.space', '.tech', '.store', '.shop', '.blog', '.news', '.media', '.agency', '.studio', '.design', '.group', '.team', '.center', '.zone', '.world', '.life', '.live', '.today', '.guru', '.expert', '.pro', '.solutions', '.systems', '.software'];
+            if (premiumTlds.includes(tld)) {
+              score += 8;
+              urlIssues += 1;
+              reasons.push(`💎 Premium TLD (higher risk): ${domain}`);
+            }
+
+            // Check for long domains (potential DGA or typosquatting)
+            if (domain.length > 50) {
+              score += 18;
+              keywordMatches += 1;
+              reasons.push(`📏 Unusually long domain name (potential DGA/typosquatting): ${domain}`);
+              categorizedReasons.advanced.push(`📏 Unusually long domain (potential DGA): ${domain.slice(0, 40)}...`);
+            }
+
+            // Check for very short domains (suspicious)
+            if (domainWithoutTld.length < 3) {
+              score += 15;
+              keywordMatches += 1;
+              reasons.push(`📏 Very short domain name: ${domain}`);
+              categorizedReasons.advanced.push(`📏 Very short domain name: ${domain}`);
+            }
+
+            // Check for numbers in domain (potential DGA)
+            const numberCount = (domain.match(/\d/g) || []).length;
+            if (numberCount > 5) {
+              score += 20;
+              keywordMatches += 1;
+              reasons.push(`🔢 High number of digits in domain (potential DGA): ${domain}`);
+              categorizedReasons.advanced.push(`🔢 High number count in domain (potential DGA): ${numberCount} digits`);
+            }
+
+            // Check for consecutive numbers (very suspicious)
+            if (/\d{3,}/.test(domainWithoutTld)) {
+              score += 25;
+              keywordMatches += 1;
+              reasons.push(`🔢 Consecutive numbers in domain: ${domain}`);
+              categorizedReasons.advanced.push(`🔢 Consecutive numbers detected in domain: ${domain}`);
+            }
+
+            // Check for hyphens (potential typosquatting)
+            const hyphenCount = (domain.match(/-/g) || []).length;
+            if (hyphenCount > 2) {
+              score += 12;
+              keywordMatches += 1;
+              reasons.push(`➖ Excessive hyphens in domain: ${domain}`);
+              categorizedReasons.grammar.push(`➖ Excessive hyphens detected (${hyphenCount}): ${domain}`);
+            }
+
+            // Check for repeated characters
+            const repeatedChars = /(.)\1{2,}/;
+            if (repeatedChars.test(domainWithoutTld)) {
+              score += 15;
+              keywordMatches += 1;
+              reasons.push(`🔁 Repeated characters in domain: ${domain}`);
+              categorizedReasons.grammar.push(`🔁 Repeated characters detected: ${domain}`);
+            }
+
+            // Check for suspicious keywords in domain (enhanced like email section) - skip for whitelisted
+            // Only check keywords for non-whitelisted domains
+            if (!safeDomainWhitelist.includes(domainLower)) {
+              const suspiciousDomainKeywords = ['login', 'password', 'verify', 'account', 'security', 'bank', 'paypal', 'amazon', 'microsoft', 'apple', 'google', 'facebook', 'instagram', 'netflix', 'update', 'confirm', 'validate', 'authenticate', 'secure', 'safe', 'trusted', 'official', 'support', 'help', 'service', 'admin', 'root', 'system', 'alert', 'warning', 'error', 'failed', 'suspended', 'locked', 'blocked', 'disabled', 'urgent', 'immediate', 'action', 'required', 'click', 'download', 'open', 'attachment', 'file', 'exe', 'zip', 'rar', 'pdf', 'doc', 'xls', 'ppt', 'free', 'prize', 'winner', 'lottery', 'claim', 'gift', 'bonus', 'reward', 'cash', 'money', 'bitcoin', 'crypto', 'wallet', 'investment', 'trading', 'forex', 'binary', 'options', 'scam', 'fraud', 'phish', 'hack', 'virus', 'malware', 'trojan', 'ransomware', 'spyware'];
+              const foundDomainKeywords = suspiciousDomainKeywords.filter(kw => domainLower.includes(kw));
+              if (foundDomainKeywords.length > 0) {
+                score += foundDomainKeywords.length * 15; // Increased from 10 to 15 like email section
+                keywordMatches += foundDomainKeywords.length;
+                reasons.push(`⚠️ Suspicious keywords in domain: ${foundDomainKeywords.join(', ')} (${domain})`);
+                categorizedReasons.context.push(`⚠️ Suspicious keywords: ${foundDomainKeywords.slice(0, 3).join(', ')}`);
+              }
+            }
+
+            // Check for brand impersonation (enhanced like email section) - skip for whitelisted
+            if (!safeDomainWhitelist.includes(domainLower)) {
+              const brands = ['paypal', 'amazon', 'microsoft', 'apple', 'google', 'facebook', 'instagram', 'netflix', 'bank', 'twitter', 'linkedin', 'youtube', 'whatsapp', 'telegram', 'skype', 'zoom', 'slack', 'discord', 'ebay', 'alibaba', 'aliexpress', 'walmart', 'target', 'bestbuy', 'costco', 'home depot', 'lowes', 'ikea', 'nordstrom', 'macys', 'kohls', 'jcpenney', 'sears', 'kmart', 'overstock', 'wayfair', 'etsy', 'craigslist', 'indeed', 'monster', 'glassdoor', 'ziprecruiter', 'dice', 'careerbuilder', 'snagajob',
+                'bkash', 'nagad', 'rocket', 'daraz', 'pathao', 'shohoz', 'chaldal', 'sonali', 'brac', 'dutch bangla', 'dbbl', 'city bank', 'janata bank', 'islami bank', 'robi', 'banglalink'];
+              for (const brand of brands) {
+                if (domainLower.includes(brand) && !domainLower.includes(`${brand}.com`) && !domainLower.includes(`${brand}.org`) && !domainLower.includes(`${brand}.net`) && !domainLower.includes(`${brand}.edu`)) {
+                  score += 35; // Increased from 30 to 35 like email section
+                  brandImpersonation = true;
+                  reasons.push(`🎭 Brand impersonation detected: ${brand} (${domain})`);
+                  categorizedReasons.brand.push(`🎭 Brand impersonation: ${brand}`);
+                  break;
+                }
+              }
+            }
+
+            // Check for homograph attacks (similar looking characters)
+            const suspiciousChars = /[а-яё]/i; // Cyrillic characters that look like Latin
+            if (suspiciousChars.test(domainWithoutTld)) {
+              score += 25;
+              keywordMatches += 1;
+              reasons.push(`🔤 Homograph attack detected (similar characters): ${domain}`);
+              categorizedReasons.advanced.push(`🔤 Homograph attack detected (similar chars): ${domain}`);
+            }
+
+            // Check for excessive subdomains
+            const subdomainCount = (domain.match(/\./g) || []).length;
+            if (subdomainCount > 3) {
+              score += 15;
+              urlIssues += 1;
+              reasons.push(`🌐 Excessive subdomains (${subdomainCount}): ${domain}`);
+              categorizedReasons.urls.push(`🌐 Excessive subdomains (${subdomainCount})`);
+            }
+
+            // Check for punycode domains (internationalized domain names)
+            if (domainLower.startsWith('xn--')) {
+              score += 20;
+              urlIssues += 1;
+              reasons.push(`🌍 Punycode domain (potential homograph attack): ${domain}`);
+              categorizedReasons.advanced.push(`🌍 Punycode domain (homograph risk): ${domain}`);
+            }
+
+            reasons.push(`🌐 Domain analyzed: ${domain}`);
+            domainAnalysisResults.push({ domain, tld });
+
+            // Additional domain heuristics: simple leet/typosquatting detection
+            const normalizeLeet = (s: string) => s.replace(/0/g, 'o').replace(/1/g, 'l').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't').replace(/\|/g, 'l');
+            const normalized = normalizeLeet(domainLower);
+            const brandChecks = ['paypal', 'amazon', 'microsoft', 'apple', 'google', 'netflix', 'facebook', 'instagram', 'bank', 'paypal', 'github', 'gitlab', 'docker', 'aws', 'azure'];
+            for (const b of brandChecks) {
+              if (normalized.includes(b) && !domainLower.includes(`${b}.`)) {
+                score += 30;
                 brandImpersonation = true;
-                reasons.push(`🎭 Brand impersonation detected: ${brand} (${domain})`);
-                categorizedReasons.brand.push(`🎭 Brand impersonation: ${brand}`);
+                reasons.push(`🎭 Possible typosquatting / brand lookalike detected: ${domain} (similar to ${b})`);
+                categorizedReasons.brand.push(`🎭 Typosquatting/brand lookalike: ${b} -> ${domain}`);
                 break;
               }
             }
-          }
 
-          // Check for homograph attacks (similar looking characters)
-          const suspiciousChars = /[а-яё]/i; // Cyrillic characters that look like Latin
-          if (suspiciousChars.test(domainWithoutTld)) {
-            score += 25;
-            keywordMatches += 1;
-            reasons.push(`🔤 Homograph attack detected (similar characters): ${domain}`);
-            categorizedReasons.advanced.push(`🔤 Homograph attack detected (similar chars): ${domain}`);
           }
-
-          // Check for excessive subdomains
-          const subdomainCount = (domain.match(/\./g) || []).length;
-          if (subdomainCount > 3) {
-            score += 15;
-            urlIssues += 1;
-            reasons.push(`🌐 Excessive subdomains (${subdomainCount}): ${domain}`);
-            categorizedReasons.urls.push(`🌐 Excessive subdomains (${subdomainCount})`);
-          }
-
-          // Check for punycode domains (internationalized domain names)
-          if (domainLower.startsWith('xn--')) {
-            score += 20;
-            urlIssues += 1;
-            reasons.push(`🌍 Punycode domain (potential homograph attack): ${domain}`);
-            categorizedReasons.advanced.push(`🌍 Punycode domain (homograph risk): ${domain}`);
-          }
-
-          reasons.push(`🌐 Domain analyzed: ${domain}`);
-          domainAnalysisResults.push({ domain, tld });
-
-          // Additional domain heuristics: simple leet/typosquatting detection
-          const normalizeLeet = (s: string) => s.replace(/0/g, 'o').replace(/1/g, 'l').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't').replace(/\|/g, 'l');
-          const normalized = normalizeLeet(domainLower);
-          const brandChecks = ['paypal','amazon','microsoft','apple','google','netflix','facebook','instagram','bank','paypal','github','gitlab','docker','aws','azure'];
-          for (const b of brandChecks) {
-            if (normalized.includes(b) && !domainLower.includes(`${b}.`)) {
-              score += 30;
-              brandImpersonation = true;
-              reasons.push(`🎭 Possible typosquatting / brand lookalike detected: ${domain} (similar to ${b})`);
-              categorizedReasons.brand.push(`🎭 Typosquatting/brand lookalike: ${b} -> ${domain}`);
-              break;
-            }
-          }
-
-          // WHOIS privacy / recently-registered (simulated heuristic)
-          if (domain.length > 0 && domain.length < 12 && Math.random() < 0.12) {
-            score += 10;
-            categorizedReasons.advanced.push(`🕵️ WHOIS privacy or recently-registered domain (simulated): ${domain}`);
-          }
+          if (domainAnalysisResults.length > 0) metadata.domainAnalysis = domainAnalysisResults;
+          break;
         }
-        if (domainAnalysisResults.length > 0) metadata.domainAnalysis = domainAnalysisResults;
-        break;
-    }
+      }
 
-    score = Math.min(score, 100);
-    const confidence = Math.min(85 + Math.random() * 15, 99);
+      // Prefer the stronger result, without double-counting the same signal
+      // from the shared scan and the detailed legacy branch.
+      score = Math.min(Math.max(score, sharedBaseScore), 100);
+      keywordMatches = Math.max(keywordMatches, sharedScan.keywordMatches);
+      urlIssues = Math.max(urlIssues, sharedScan.urlIssues);
+      sensitiveRequests = Math.max(sensitiveRequests, sharedScan.sensitiveRequests);
+      brandImpersonation = brandImpersonation || sharedScan.brandImpersonation;
+      const confidence = Math.min(96, Math.max(sharedScan.confidence, 60 + Math.min(reasons.length * 3, 24)));
 
-    if (score === 0 && reasons.length === 0) {
-      reasons.push('✅ No immediate threats detected');
-    }
+      if (score === 0 && reasons.length === 0) {
+        reasons.push('✅ No immediate threats detected');
+      }
 
-    setAnalysisSteps(prev => prev.map((s, i) => i <= 2 ? { ...s, status: 'complete' } : { ...s, status: 'active' }));
+      setAnalysisSteps(prev => prev.map((s, i) => i <= 2 ? { ...s, status: 'complete' } : { ...s, status: 'active' }));
 
-    // Merge categorizedReasons collected during analysis with any generic reason strings
-    const mergedCategorized = {
-      urls: Array.from(new Set([...(categorizedReasons.urls || []), ...reasons.filter(r => /https?:\/\/|url|link|domain|IP-based|IP analyzed|Domain analyzed|URL analyzed|Excessive links|Shortened|TLD|suspicious TLD|redirect/i.test(r))])),
-      brand: Array.from(new Set([...(categorizedReasons.brand || []), ...reasons.filter(r => /brand|impersonation|🎭|Brand impersonation/i.test(r))])),
-      content: Array.from(new Set([...(categorizedReasons.content || []), ...(categorizedReasons.grammar || []), ...(categorizedReasons.context || []), ...reasons.filter(r => /phras|phishing phrases|punctuation|capitaliz|grammar|excessive punctuation|urgent|prize|threat|time|region|Requests sensitive information|generic greeting|all caps|exclamation|repeated punctuation/i.test(r))])),
-      grammar: Array.from(new Set([...(categorizedReasons.grammar || []), ...reasons.filter(r => /phras|phishing phrases|punctuation|capitaliz|grammar|excessive punctuation|Inconsistent capitalization|all caps|exclamation|repeated punctuation/i.test(r))])),
-      attachments: Array.from(new Set([...(categorizedReasons.attachments || []), ...reasons.filter(r => /attachment|file|download|password-protected|locked|protected file|Large file size|Double file extension/i.test(r))])),
-      advanced: Array.from(new Set([...(categorizedReasons.advanced || []), ...reasons.filter(r => /mixed character|homograph|punycode|character sets|Mixed character sets|Homograph|Punycode|base64|obfuscation/i.test(r))])),
-      headers: Array.from(new Set([...(categorizedReasons.headers || []), ...reasons.filter(r => /SPF|DKIM|DMARC|No SPF|No DKIM|No DMARC|authentication-results|Reply-To|From\(/i.test(r))])),
-      context: Array.from(new Set([...(categorizedReasons.context || []), ...reasons.filter(r => /urgent|prize|threat|time|region|Requests sensitive information|suspicious time|Bangladesh-specific|Detected region/i.test(r))])),
-      other: Array.from(new Set([...(categorizedReasons.other || []), ...reasons.filter(r => {
-        // Exclude anything already placed in other categories
-        const inOther = /https?:\/\/|url|link|domain|IP analyzed|Excessive links|Shortened|TLD|brand|impersonation|phras|phishing phrases|punctuation|capitaliz|attachment|file|download|password-protected|locked|protected file|mixed character|homograph|punycode|SPF|DKIM|DMARC|urgent|prize|threat|time|region|Requests sensitive information/i;
-        return !inOther.test(r);
-      })]))
-    };
+      // Merge categorizedReasons collected during analysis with any generic reason strings
+      const mergedCategorized = {
+        urls: Array.from(new Set([...(categorizedReasons.urls || []), ...reasons.filter(r => /https?:\/\/|url|link|domain|IP-based|IP analyzed|Domain analyzed|URL analyzed|Excessive links|Shortened|TLD|suspicious TLD|redirect/i.test(r))])),
+        brand: Array.from(new Set([...(categorizedReasons.brand || []), ...reasons.filter(r => /brand|impersonation|🎭|Brand impersonation/i.test(r))])),
+        content: Array.from(new Set([...(categorizedReasons.content || []), ...(categorizedReasons.grammar || []), ...(categorizedReasons.context || []), ...reasons.filter(r => /phras|phishing phrases|punctuation|capitaliz|grammar|excessive punctuation|urgent|prize|threat|time|region|Requests sensitive information|generic greeting|all caps|exclamation|repeated punctuation/i.test(r))])),
+        grammar: Array.from(new Set([...(categorizedReasons.grammar || []), ...reasons.filter(r => /phras|phishing phrases|punctuation|capitaliz|grammar|excessive punctuation|Inconsistent capitalization|all caps|exclamation|repeated punctuation/i.test(r))])),
+        attachments: Array.from(new Set([...(categorizedReasons.attachments || []), ...reasons.filter(r => /attachment|file|download|password-protected|locked|protected file|Large file size|Double file extension/i.test(r))])),
+        advanced: Array.from(new Set([...(categorizedReasons.advanced || []), ...reasons.filter(r => /mixed character|homograph|punycode|character sets|Mixed character sets|Homograph|Punycode|base64|obfuscation/i.test(r))])),
+        headers: Array.from(new Set([...(categorizedReasons.headers || []), ...reasons.filter(r => /SPF|DKIM|DMARC|No SPF|No DKIM|No DMARC|authentication-results|Reply-To|From\(/i.test(r))])),
+        context: Array.from(new Set([...(categorizedReasons.context || []), ...reasons.filter(r => /urgent|prize|threat|time|region|Requests sensitive information|suspicious time|Bangladesh-specific|Detected region/i.test(r))])),
+        other: Array.from(new Set([...(categorizedReasons.other || []), ...reasons.filter(r => {
+          // Exclude anything already placed in other categories
+          const inOther = /https?:\/\/|url|link|domain|IP analyzed|Excessive links|Shortened|TLD|brand|impersonation|phras|phishing phrases|punctuation|capitaliz|attachment|file|download|password-protected|locked|protected file|mixed character|homograph|punycode|SPF|DKIM|DMARC|urgent|prize|threat|time|region|Requests sensitive information/i;
+          return !inOther.test(r);
+        })]))
+      };
 
-    const newResult: PhishingResult = {
-      score,
-      reasons,
-      categorizedReasons: mergedCategorized,
-      details: {
-        keywordMatches,
-        urlIssues,
-        sensitiveRequests,
-        brandImpersonation,
-        riskLevel: score < 30 ? 'safe' : score < 70 ? 'suspicious' : 'phishing',
-        totalIndicators: keywordMatches + urlIssues + sensitiveRequests + (brandImpersonation ? 1 : 0)
-      },
-      confidence,
-      timestamp: Date.now(),
-      emailPreview: inputType === 'email' ? text.substring(0, 100) : undefined,
-      inputType,
-      inputContent: text,
-      metadata,
-      // Enhanced analysis details for professional output
-      analysisDetails: {
-        engines: [
-          { name: 'Keyword Analysis', status: keywordMatches > 0 ? 'suspicious' : 'clean', score: Math.min(keywordMatches * 8, 40) },
-          { name: 'URL Reputation', status: urlIssues > 0 ? 'suspicious' : 'clean', score: Math.min(urlIssues * 15, 35) },
-          { name: 'Content Analysis', status: sensitiveRequests > 0 ? 'malicious' : 'clean', score: Math.min(sensitiveRequests * 20, 40) },
-          { name: 'Brand Protection', status: brandImpersonation ? 'malicious' : 'clean', score: brandImpersonation ? 25 : 0 },
-          { name: 'Behavioral Analysis', status: score > 50 ? 'suspicious' : 'clean', score: Math.min(score * 0.3, 20) }
-        ],
-        threatLevel: score < 30 ? 'Low' : score < 70 ? 'Medium' : 'High',
-        riskFactors: reasons.length,
-        communityFeedback: {
-          similarReports: Math.floor(Math.random() * 50) + 1,
-          firstSeen: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          lastSeen: new Date().toISOString().split('T')[0]
+      const newResult: PhishingResult = {
+        score,
+        reasons,
+        categorizedReasons: mergedCategorized,
+        details: {
+          keywordMatches,
+          urlIssues,
+          sensitiveRequests,
+          brandImpersonation,
+          riskLevel: score < 30 ? 'safe' : score < 70 ? 'suspicious' : 'phishing',
+          totalIndicators: keywordMatches + urlIssues + sensitiveRequests + (brandImpersonation ? 1 : 0)
         },
-        detectionRatio: `${Math.floor(score * 0.8)}/${Math.floor(100 - score * 0.2)}`,
-        categories: score < 30 ? ['Clean'] : score < 70 ? ['Suspicious', 'Potential Phishing'] : ['Phishing', 'Malicious', 'High Risk']
+        confidence,
+        timestamp: Date.now(),
+        emailPreview: inputType === 'email' ? text.substring(0, 100) : undefined,
+        inputType,
+        inputContent: text,
+        metadata,
+        // Enhanced analysis details for professional output
+        analysisDetails: {
+          engines: [
+            { name: 'Keyword Analysis', status: keywordMatches > 0 ? 'suspicious' : 'clean', score: Math.min(keywordMatches * 8, 40) },
+            { name: 'URL Reputation', status: urlIssues > 0 ? 'suspicious' : 'clean', score: Math.min(urlIssues * 15, 35) },
+            { name: 'Content Analysis', status: sensitiveRequests > 0 ? 'malicious' : 'clean', score: Math.min(sensitiveRequests * 20, 40) },
+            { name: 'Brand Protection', status: brandImpersonation ? 'malicious' : 'clean', score: brandImpersonation ? 25 : 0 },
+            { name: 'Behavioral Analysis', status: score > 50 ? 'suspicious' : 'clean', score: Math.min(score * 0.3, 20) }
+          ],
+          threatLevel: score < 30 ? 'Low' : score < 70 ? 'Medium' : 'High',
+          riskFactors: reasons.length,
+          communityFeedback: {
+            similarReports: 0,
+            firstSeen: 'Not available',
+            lastSeen: 'Not available'
+          },
+          detectionRatio: 'Heuristic analysis only',
+          categories: score < 30 ? ['Clean'] : score < 70 ? ['Suspicious', 'Potential Phishing'] : ['Phishing', 'Malicious', 'High Risk']
+        }
+      };
+
+      setResult(newResult);
+
+      const newHistory: AnalysisHistory = {
+        id: Date.now().toString(),
+        result: newResult,
+        timestamp: Date.now(),
+        inputType,
+        inputContent: inputType === 'email' ? emailText :
+          inputType === 'file' ? (fileNameText || file?.name || '') :
+            inputType === 'url' ? urlText :
+              inputType === 'ip' ? ipText :
+                domainText
+      };
+      setHistory([newHistory, ...history.slice(0, 19)]);
+      setSidebarHistory([newHistory, ...sidebarHistory.slice(0, 19)]);
+
+      const newStats = {
+        ...stats,
+        totalAnalyses: stats.totalAnalyses + 1,
+        phishingDetected: score >= 70 ? stats.phishingDetected + 1 : stats.phishingDetected,
+        safeEmails: score < 30 ? stats.safeEmails + 1 : stats.safeEmails,
+        achievements: stats.achievements || []
+      };
+
+      const unlockedAchievements = checkAchievements(newStats);
+
+      if (unlockedAchievements.length > 0) {
+        newStats.achievements = [...newStats.achievements, ...unlockedAchievements];
+        unlockedAchievements.forEach(achievement => {
+          toast.custom(() => <AchievementToast achievement={achievement} />, { position: 'top-right' });
+        });
       }
-    };
 
-    setResult(newResult);
+      setStats(newStats);
 
-    const newHistory: AnalysisHistory = {
-      id: Date.now().toString(),
-      result: newResult,
-      timestamp: Date.now(),
-      inputType,
-      inputContent: inputType === 'email' ? emailText :
-                   inputType === 'file' ? (fileNameText || file?.name || '') :
-                   inputType === 'url' ? urlText :
-                   inputType === 'ip' ? ipText :
-                   domainText
-    };
-    setHistory([newHistory, ...history.slice(0, 19)]);
-    setSidebarHistory([newHistory, ...sidebarHistory.slice(0, 19)]);
+      setAnalysisSteps(prev => prev.map(s => ({ ...s, status: 'complete' })));
 
-    const newStats = {
-      ...stats,
-      totalAnalyses: stats.totalAnalyses + 1,
-      phishingDetected: score >= 70 ? stats.phishingDetected + 1 : stats.phishingDetected,
-      safeEmails: score < 30 ? stats.safeEmails + 1 : stats.safeEmails,
-      achievements: stats.achievements || []
-    };
+      setIsLoading(false);
 
-    const unlockedAchievements = checkAchievements(newStats);
-
-    if (unlockedAchievements.length > 0) {
-      newStats.achievements = [...newStats.achievements, ...unlockedAchievements];
-      unlockedAchievements.forEach(achievement => {
-        toast.custom(() => <AchievementToast achievement={achievement} />);
-      });
-    }
-
-    setStats(newStats);
-
-    setAnalysisSteps(prev => prev.map(s => ({ ...s, status: 'complete' })));
-
-    setIsLoading(false);
-
-    if (score < 30) {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
-      toast.success(`${inputType.charAt(0).toUpperCase() + inputType.slice(1)} looks safe! ✅`);
-    } else if (score >= 70) {
-      if (cardRef.current) {
-        cardRef.current.style.animation = 'shake 0.5s';
-        setTimeout(() => {
-          if (cardRef.current) cardRef.current.style.animation = '';
-        }, 500);
+      if (score < 30) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+        toast.success(`${inputType.charAt(0).toUpperCase() + inputType.slice(1)} looks safe! ✅`);
+      } else if (score >= 70) {
+        if (cardRef.current) {
+          cardRef.current.style.animation = 'shake 0.5s';
+          setTimeout(() => {
+            if (cardRef.current) cardRef.current.style.animation = '';
+          }, 500);
+        }
+        toast.custom(() => (
+          <div className="bg-destructive/10 backdrop-blur-xl border border-destructive/30 p-4 rounded-xl shadow-2xl flex items-center gap-4 min-w-[300px]">
+            <div className="bg-destructive/20 p-2 rounded-full">
+              <AlertTriangle className="w-6 h-6 text-destructive" />
+            </div>
+            <div>
+              <h4 className="font-bold text-foreground text-base">High Risk Detected!</h4>
+              <p className="text-sm text-muted-foreground">Severe phishing indicators found.</p>
+            </div>
+          </div>
+        ), { duration: 5000, position: 'bottom-center' });
+      } else {
+        toast.warning('Suspicious content - be cautious');
       }
-      toast.error('⚠️ High risk detected!');
-    } else {
-      toast.warning('Suspicious content - be cautious');
-    }
 
-    return newResult;
+      return newResult;
     }
     catch (err: any) {
       console.error('performAnalysis error', err);
@@ -1373,7 +1371,7 @@ export const PhishingDetectorEnhanced = () => {
 
   const copyResults = () => {
     if (!result) return;
-    
+
     const text = `Phishing Analysis Report\nScore: ${result.score}/100\nStatus: ${result.score < 30 ? 'Safe' : result.score < 70 ? 'Suspicious' : 'Phishing'}\nConfidence: ${result.confidence}%\n\nDetection Reasons:\n${result.reasons.map((r, i) => `${i + 1}. ${r}`).join('\n')}`;
 
     navigator.clipboard.writeText(text);
@@ -1412,7 +1410,7 @@ export const PhishingDetectorEnhanced = () => {
     if (!stats.achievements?.some(a => a.id === 'csv-exporter')) {
       const newAchievement = { id: 'csv-exporter', title: 'Data Analyst', description: 'Exported analysis to CSV', icon: '📊', unlocked: true };
       setStats({ ...stats, achievements: [...(stats.achievements || []), newAchievement] });
-      toast.custom(() => <AchievementToast achievement={newAchievement} />);
+      toast.custom(() => <AchievementToast achievement={newAchievement} />, { position: 'top-right' });
     }
   };
 
@@ -1443,8 +1441,8 @@ export const PhishingDetectorEnhanced = () => {
       )}
 
       {/* Skip to main content for screen readers */}
-      <a 
-        href="#main-content" 
+      <a
+        href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md"
       >
         Skip to main content
@@ -1465,24 +1463,11 @@ export const PhishingDetectorEnhanced = () => {
         onQuizClick={() => setQuizOpen(!quizOpen)}
         onAIClick={() => setShowAI(!showAI)}
         onExportClick={handleExportCSV}
+        onAPIKeysClick={() => setApiModalOpen(true)}
         historyLength={history.length}
       />
 
-      {/* Mobile Menu */}
-      <MobileMenu
-        isOpen={mobileMenuOpen}
-        onClose={() => setMobileMenuOpen(false)}
-        onHistoryClick={() => setHistoryOpen(!historyOpen)}
-        onQuizClick={() => setQuizOpen(!quizOpen)}
-        onAIClick={() => setShowAI(!showAI)}
-        onExportClick={handleExportCSV}
-        historyLength={history.length}
-      />
-
-      {/* Floating Action Button for Mobile */}
-      <FloatingActionButton onClick={() => setMobileMenuOpen(true)} />
-
-      <main className="min-h-screen bg-background flex items-center justify-center p-4 pt-24 pb-12" id="main-content">
+      <main className="min-h-screen bg-background flex items-center justify-center px-4 pt-24 pb-12" id="main-content">
         <style>{`
           @keyframes shake {
             0%, 100% { transform: translateX(0); }
@@ -1502,10 +1487,11 @@ export const PhishingDetectorEnhanced = () => {
                   onClick={() => setShowAI(!showAI)}
                   className="gap-2 bg-gradient-to-r from-secondary/5 to-secondary/10 hover:from-secondary/10 hover:to-secondary/20 border-secondary/30 hover:border-secondary/50 transition-all animate-glow-pulse shadow-sm hover:shadow-md"
                 >
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                    N
+                  <div className="relative w-6 h-6 rounded-md bg-gradient-primary flex items-center justify-center text-primary-foreground shadow-sm ring-1 ring-white/10 overflow-hidden">
+                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%,100%_100%] animate-[shimmer_2s_infinite]"></div>
+                    <Brain className="w-3.5 h-3.5 relative z-10" />
                   </div>
-                  Nio AI
+                  <span className="font-semibold text-sm bg-gradient-primary bg-clip-text text-transparent">Nio AI</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>AI Assistant</TooltipContent>
@@ -1522,7 +1508,7 @@ export const PhishingDetectorEnhanced = () => {
                   className="gap-2 bg-gradient-to-r from-secondary/5 to-secondary/10 hover:from-secondary/10 hover:to-secondary/20 border-secondary/30 hover:border-secondary/50 transition-all shadow-sm hover:shadow-md"
                 >
                   <Download className="w-4 h-4" />
-                  Export
+                  <span className="font-semibold text-sm">Export</span>
                 </Button>
               </motion.div>
             </DropdownMenuTrigger>
@@ -1564,7 +1550,7 @@ export const PhishingDetectorEnhanced = () => {
                   className="gap-2 bg-gradient-to-r from-secondary/5 to-secondary/10 hover:from-secondary/10 hover:to-secondary/20 border-secondary/30 hover:border-secondary/50 transition-all shadow-sm hover:shadow-md"
                 >
                   <FileJson className="w-4 h-4" />
-                  API Keys
+                  <span className="font-semibold text-sm">API Keys</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Manage API keys</TooltipContent>
@@ -1576,7 +1562,7 @@ export const PhishingDetectorEnhanced = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-5xl"
+          className="w-full max-w-5xl mx-auto md:translate-x-px"
         >
 
           <div className="text-center mb-4">
@@ -1584,35 +1570,25 @@ export const PhishingDetectorEnhanced = () => {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-              className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-gradient-primary mb-6 shadow-glow relative"
+              className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-full bg-gradient-primary mb-4 md:mb-6 shadow-glow relative"
             >
-              <Shield className="w-14 h-14 text-primary-foreground" />
-              {realtimeScore > 0 && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200 }}
-                  className="absolute -top-3 -right-3 bg-gradient-to-br from-warning to-danger text-white text-sm font-bold rounded-full w-10 h-10 flex items-center justify-center shadow-lg"
-                >
-                  {realtimeScore}
-                </motion.div>
-              )}
+              <Shield className="w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 text-primary-foreground" />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="text-6xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-6 tracking-tight leading-tight pb-2"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-3 md:mb-6 tracking-tight leading-tight pb-1"
             >
-              Ultimate Phishing Analyzer
+              EchoMe
             </motion.h1>
             <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-muted-foreground text-xl max-w-2xl mx-auto mb-6 leading-relaxed"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed px-2"
             >
-              Advanced AI-powered analysis to identify phishing attempts, malicious links, and suspicious content
+              Harness next-generation AI algorithms to instantly intercept dynamic phishing attacks, trace hidden malicious URLs, and neutralize deceptive content across all vectors.
             </motion.p>
           </div>
 
@@ -1652,6 +1628,48 @@ export const PhishingDetectorEnhanced = () => {
             )}
           </AnimatePresence>
 
+          <AnimatePresence>
+            {showURLScreenshot && inputType === 'url' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                animate={{ opacity: 1, height: "auto", scale: 1 }}
+                exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="mb-6"
+              >
+                <URLScreenshotAnalyzer onAnalyze={setUrlText} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showIPScreenshot && inputType === 'ip' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                animate={{ opacity: 1, height: "auto", scale: 1 }}
+                exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="mb-6"
+              >
+                <IPScreenshotAnalyzer onAnalyze={setIpText} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showDomainScreenshot && inputType === 'domain' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                animate={{ opacity: 1, height: "auto", scale: 1 }}
+                exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="mb-6"
+              >
+                <DomainScreenshotAnalyzer onAnalyze={setDomainText} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
 
 
 
@@ -1664,7 +1682,7 @@ export const PhishingDetectorEnhanced = () => {
             transition={{ duration: 0.4, delay: 0.4 }}
             ref={cardRef}
           >
-                <APIKeysModal isOpen={apiModalOpen} onClose={() => setApiModalOpen(false)} />
+            <APIKeysModal isOpen={apiModalOpen} onClose={() => setApiModalOpen(false)} />
             <Card className="p-6 bg-gradient-card border-border shadow-xl backdrop-blur-sm">
               {isLoading && analysisSteps.length > 0 && (
                 <motion.div
@@ -1685,9 +1703,8 @@ export const PhishingDetectorEnhanced = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowHeaderParser(!showHeaderParser)}
-                        className={`gap-2 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/20 border-primary/30 hover:border-primary/50 transition-all shadow-sm hover:shadow-md ${
-                          showHeaderParser ? 'shadow-lg shadow-primary/50 animate-glow border-primary/70' : ''
-                        }`}
+                        className={`gap-2 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/20 border-primary/30 hover:border-primary/50 transition-all shadow-sm hover:shadow-md ${showHeaderParser ? 'shadow-lg shadow-primary/50 animate-glow border-primary/70' : ''
+                          }`}
                       >
                         <FileText className="w-4 h-4" />
                         Email Headers
@@ -1702,14 +1719,49 @@ export const PhishingDetectorEnhanced = () => {
                             setStats({ ...stats, achievements: [...(stats.achievements || []), newAchievement] });
                           }
                         }}
-                        className={`gap-2 bg-gradient-to-r from-purple/5 to-purple/10 hover:from-purple/10 hover:to-purple/20 border-purple/30 hover:border-purple/50 transition-all shadow-sm hover:shadow-md ${
-                          showScreenshot ? 'shadow-lg shadow-purple/50 animate-glow border-purple/70' : ''
-                        }`}
+                        className={`gap-2 bg-gradient-to-r from-accent/5 to-accent/10 hover:from-accent/10 hover:to-accent/20 border-accent/30 hover:border-accent/50 transition-all shadow-sm hover:shadow-md ${showScreenshot ? 'shadow-lg shadow-accent/50 animate-glow border-accent/70' : ''
+                          }`}
                       >
                         <Download className="w-4 h-4" />
                         Screenshot OCR
                       </Button>
                     </>
+                  )}
+
+                  {inputType === 'url' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowURLScreenshot(!showURLScreenshot)}
+                      className={`gap-2 bg-gradient-to-r from-accent/5 to-accent/10 hover:from-accent/10 hover:to-accent/20 border-accent/30 hover:border-accent/50 transition-all shadow-sm hover:shadow-md ${showURLScreenshot ? 'shadow-lg shadow-accent/50 animate-glow border-accent/70' : ''}`}
+                    >
+                      <Download className="w-4 h-4" />
+                      URL Screenshot OCR
+                    </Button>
+                  )}
+
+                  {inputType === 'ip' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowIPScreenshot(!showIPScreenshot)}
+                      className={`gap-2 bg-gradient-to-r from-accent/5 to-accent/10 hover:from-accent/10 hover:to-accent/20 border-accent/30 hover:border-accent/50 transition-all shadow-sm hover:shadow-md ${showIPScreenshot ? 'shadow-lg shadow-accent/50 animate-glow border-accent/70' : ''}`}
+                    >
+                      <Download className="w-4 h-4" />
+                      IP Screenshot OCR
+                    </Button>
+                  )}
+
+                  {inputType === 'domain' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDomainScreenshot(!showDomainScreenshot)}
+                      className={`gap-2 bg-gradient-to-r from-accent/5 to-accent/10 hover:from-accent/10 hover:to-accent/20 border-accent/30 hover:border-accent/50 transition-all shadow-sm hover:shadow-md ${showDomainScreenshot ? 'shadow-lg shadow-accent/50 animate-glow border-accent/70' : ''}`}
+                    >
+                      <Download className="w-4 h-4" />
+                      Domain Screenshot OCR
+                    </Button>
                   )}
                   <Button
                     variant="outline"
@@ -1730,9 +1782,8 @@ export const PhishingDetectorEnhanced = () => {
                         setStats({ ...stats, achievements: [...(stats.achievements || []), newAchievement] });
                       }
                     }}
-                    className={`gap-2 bg-gradient-to-r from-success/5 to-success/10 hover:from-success/10 hover:to-success/20 border-success/30 hover:border-success/50 transition-all shadow-sm hover:shadow-md ${
-                      showRadar ? 'shadow-lg shadow-success/50 animate-glow border-success/70' : ''
-                    }`}
+                    className={`gap-2 bg-gradient-to-r from-success/5 to-success/10 hover:from-success/10 hover:to-success/20 border-success/30 hover:border-success/50 transition-all shadow-sm hover:shadow-md ${showRadar ? 'shadow-lg shadow-success/50 animate-glow border-success/70' : ''
+                      }`}
                   >
                     <Radar className="w-4 h-4" />
                     Security Radar
@@ -1747,9 +1798,8 @@ export const PhishingDetectorEnhanced = () => {
                         setStats({ ...stats, achievements: [...(stats.achievements || []), newAchievement] });
                       }
                     }}
-                    className={`gap-2 bg-gradient-to-r from-warning/5 to-warning/10 hover:from-warning/10 hover:to-warning/20 border-warning/30 hover:border-warning/50 transition-all shadow-sm hover:shadow-md ${
-                      showHeatMap ? 'shadow-lg shadow-warning/50 animate-glow border-warning/70' : ''
-                    }`}
+                    className={`gap-2 bg-gradient-to-r from-warning/5 to-warning/10 hover:from-warning/10 hover:to-warning/20 border-warning/30 hover:border-warning/50 transition-all shadow-sm hover:shadow-md ${showHeatMap ? 'shadow-lg shadow-warning/50 animate-glow border-warning/70' : ''
+                      }`}
                   >
                     <TrendingUp className="w-4 h-4" />
                     Threat Heat Map
@@ -1757,23 +1807,23 @@ export const PhishingDetectorEnhanced = () => {
                 </div>
 
                 {showHeatMap && (
-                  <>
-                    {inputType === 'email' && emailText && (
-                      <EmailHeatMap emailText={emailText} result={result} />
+                  <AnimatePresence mode="wait" initial={false}>
+                    {inputType === 'email' && (
+                      <EmailHeatMap key="email-heatmap" emailText={emailText} result={result} />
                     )}
-                    {inputType === 'file' && file && (
-                      <FileHeatMap fileName={file.name} result={result} />
+                    {inputType === 'file' && (
+                      <FileHeatMap key="file-heatmap" fileName={file?.name || fileNameText} result={result} />
                     )}
-                    {inputType === 'url' && urlText && (
-                      <URLHeatMap urlText={urlText} result={result} />
+                    {inputType === 'url' && (
+                      <URLHeatMap key="url-heatmap" urlText={urlText} result={result} />
                     )}
-                    {inputType === 'ip' && ipText && (
-                      <IPHeatMap ipText={ipText} result={result} />
+                    {inputType === 'ip' && (
+                      <IPHeatMap key="ip-heatmap" ipText={ipText} result={result} />
                     )}
-                    {inputType === 'domain' && domainText && (
-                      <DomainHeatMap domainText={domainText} result={result} />
+                    {inputType === 'domain' && (
+                      <DomainHeatMap key="domain-heatmap" domainText={domainText} result={result} />
                     )}
-                  </>
+                  </AnimatePresence>
                 )}
 
                 {inputType === 'email' && (
@@ -1789,33 +1839,21 @@ export const PhishingDetectorEnhanced = () => {
                           content="Our AI analyzes email content in real-time, checking for phishing indicators like urgency, suspicious links, and sensitive data requests. The border color indicates threat level."
                           position="right"
                         />
-                        {realtimeScore > 0 && (
-                          <span
-                            className={`text-xs ml-auto ${
-                              realtimeScore < 30 ? 'text-success' : realtimeScore < 70 ? 'text-warning' : 'text-danger'
-                            }`}
-                            role="status"
-                            aria-live="polite"
-                          >
-                            Live Score: {realtimeScore}
-                          </span>
-                        )}
                       </label>
                       <Textarea
                         ref={textareaRef}
                         id="email-input"
-                        placeholder="Paste the email content here for comprehensive phishing analysis... (Ctrl+K to focus)"
+                        placeholder="Paste the email content here for comprehensive phishing analysis..."
                         value={emailText}
                         onChange={(e) => setEmailText(e.target.value)}
-                        className={`min-h-[240px] bg-background text-foreground resize-none transition-all duration-300 ${
-                          realtimeScore === 0
-                            ? 'border-border focus:ring-2 focus:ring-primary'
-                            : realtimeScore < 30
+                        className={`min-h-[240px] bg-background text-foreground resize-none transition-all duration-300 ${realtimeScore === 0
+                          ? 'border-border focus:ring-2 focus:ring-primary'
+                          : realtimeScore < 30
                             ? 'border-success focus:ring-2 focus:ring-success shadow-[0_0_15px_hsl(var(--success)/0.3)]'
                             : realtimeScore < 70
-                            ? 'border-warning focus:ring-2 focus:ring-warning shadow-[0_0_15px_hsl(var(--warning)/0.3)] animate-border-pulse'
-                            : 'border-danger focus:ring-2 focus:ring-danger shadow-[0_0_20px_hsl(var(--danger)/0.5)] animate-border-glow'
-                        }`}
+                              ? 'border-warning focus:ring-2 focus:ring-warning shadow-[0_0_15px_hsl(var(--warning)/0.3)] animate-border-pulse'
+                              : 'border-danger focus:ring-2 focus:ring-danger shadow-[0_0_20px_hsl(var(--danger)/0.5)] animate-border-glow'
+                          }`}
                         aria-label="Email content for phishing analysis"
                         aria-describedby="textarea-help"
                       />
@@ -1839,18 +1877,17 @@ export const PhishingDetectorEnhanced = () => {
                         <span className="text-sm font-medium">Selected:</span>
                         <span className="text-xs flex items-center gap-1">
                           <span className="font-medium">{selectedExampleUrl.title}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${
-                            selectedExampleUrl.category === 'safe' ? 'bg-success/20 text-success' :
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${selectedExampleUrl.category === 'safe' ? 'bg-success/20 text-success' :
                             selectedExampleUrl.category === 'suspicious' ? 'bg-warning/20 text-warning' :
-                            'bg-danger/20 text-danger'
-                          }`}>
+                              'bg-danger/20 text-danger'
+                            }`}>
                             {selectedExampleUrl.category}
                           </span>
                         </span>
                       </div>
                     )}
-    <div>
-      <label htmlFor="url-input" className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                    <div>
+                      <label htmlFor="url-input" className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
                         <Link className="w-4 h-4 text-primary" />
                         URL Analysis
                         <ContextualHelp
@@ -1858,37 +1895,25 @@ export const PhishingDetectorEnhanced = () => {
                           content="Enter a URL to check for phishing indicators, suspicious domains, and malicious redirects. The border color indicates threat level."
                           position="right"
                         />
-                        {realtimeScore > 0 && (
-                          <span
-                            className={`text-xs ml-auto ${
-                              realtimeScore < 30 ? 'text-success' : realtimeScore < 70 ? 'text-warning' : 'text-danger'
-                            }`}
-                            role="status"
-                            aria-live="polite"
-                          >
-                            Live Score: {realtimeScore}
-                          </span>
-                        )}
                       </label>
                       <Textarea
                         id="url-input"
                         placeholder="Enter URL(s) to analyze... (one per line)"
                         value={urlText}
                         onChange={(e) => setUrlText(e.target.value)}
-                        className={`min-h-[120px] bg-background text-foreground resize-none transition-all duration-300 ${
-                          realtimeScore === 0
-                            ? 'border-border focus:ring-2 focus:ring-primary'
-                            : realtimeScore < 30
+                        className={`min-h-[120px] bg-background text-foreground resize-none transition-all duration-300 ${realtimeScore === 0
+                          ? 'border-border focus:ring-2 focus:ring-primary'
+                          : realtimeScore < 30
                             ? 'border-success focus:ring-2 focus:ring-success shadow-[0_0_15px_hsl(var(--success)/0.3)]'
                             : realtimeScore < 70
-                            ? 'border-warning focus:ring-2 focus:ring-warning shadow-[0_0_15px_hsl(var(--warning)/0.3)] animate-border-pulse'
-                            : 'border-danger focus:ring-2 focus:ring-danger shadow-[0_0_20px_hsl(var(--danger)/0.5)] animate-border-glow'
-                        }`}
+                              ? 'border-warning focus:ring-2 focus:ring-warning shadow-[0_0_15px_hsl(var(--warning)/0.3)] animate-border-pulse'
+                              : 'border-danger focus:ring-2 focus:ring-danger shadow-[0_0_20px_hsl(var(--danger)/0.5)] animate-border-glow'
+                          }`}
                         aria-label="URL for phishing analysis"
                       />
                       {selectedExampleUrl && (
                         <div className="mt-2 p-4 bg-secondary/30 border border-border rounded-lg">
-                        <h4 className="font-semibold mb-2">URL Content Analysis:</h4>
+                          <h4 className="font-semibold mb-2">URL Content Analysis:</h4>
                           <p className="text-sm text-muted-foreground mb-3">{selectedExampleUrl.description}</p>
                           <div className="text-xs text-muted-foreground">
                             <strong>Detected URL:</strong> {selectedExampleUrl.content}
@@ -1912,11 +1937,10 @@ export const PhishingDetectorEnhanced = () => {
                         <span className="text-sm font-medium">Selected:</span>
                         <span className="text-xs flex items-center gap-1">
                           <span className="font-medium">{selectedExampleIP.title}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${
-                            selectedExampleIP.category === 'safe' ? 'bg-success/20 text-success' :
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${selectedExampleIP.category === 'safe' ? 'bg-success/20 text-success' :
                             selectedExampleIP.category === 'suspicious' ? 'bg-warning/20 text-warning' :
-                            'bg-danger/20 text-danger'
-                          }`}>
+                              'bg-danger/20 text-danger'
+                            }`}>
                             {selectedExampleIP.category}
                           </span>
                         </span>
@@ -1932,37 +1956,25 @@ export const PhishingDetectorEnhanced = () => {
                           content="Enter an IP address to check reputation, geolocation, and potential malicious activity. The border color indicates threat level."
                           position="right"
                         />
-                        {realtimeScore > 0 && (
-                          <span
-                            className={`text-xs ml-auto ${
-                              realtimeScore < 30 ? 'text-success' : realtimeScore < 70 ? 'text-warning' : 'text-danger'
-                            }`}
-                            role="status"
-                            aria-live="polite"
-                          >
-                            Live Score: {realtimeScore}
-                          </span>
-                        )}
                       </label>
                       <Textarea
                         id="ip-input"
                         placeholder="Enter IP address(es) to analyze... (one per line)"
                         value={ipText}
                         onChange={(e) => setIpText(e.target.value)}
-                        className={`min-h-[120px] bg-background text-foreground resize-none transition-all duration-300 ${
-                          realtimeScore === 0
-                            ? 'border-border focus:ring-2 focus:ring-primary'
-                            : realtimeScore < 30
+                        className={`min-h-[120px] bg-background text-foreground resize-none transition-all duration-300 ${realtimeScore === 0
+                          ? 'border-border focus:ring-2 focus:ring-primary'
+                          : realtimeScore < 30
                             ? 'border-success focus:ring-2 focus:ring-success shadow-[0_0_15px_hsl(var(--success)/0.3)]'
                             : realtimeScore < 70
-                            ? 'border-warning focus:ring-2 focus:ring-warning shadow-[0_0_15px_hsl(var(--warning)/0.3)] animate-border-pulse'
-                            : 'border-danger focus:ring-2 focus:ring-danger shadow-[0_0_20px_hsl(var(--danger)/0.5)] animate-border-glow'
-                        }`}
+                              ? 'border-warning focus:ring-2 focus:ring-warning shadow-[0_0_15px_hsl(var(--warning)/0.3)] animate-border-pulse'
+                              : 'border-danger focus:ring-2 focus:ring-danger shadow-[0_0_20px_hsl(var(--danger)/0.5)] animate-border-glow'
+                          }`}
                         aria-label="IP address for analysis"
                       />
                       {selectedExampleIP && (
                         <div className="mt-4 p-4 bg-secondary/30 rounded-lg">
-                        <h4 className="font-semibold mb-2">IP Content Analysis:</h4>
+                          <h4 className="font-semibold mb-2">IP Content Analysis:</h4>
                           <p className="text-sm text-muted-foreground mb-3">{selectedExampleIP.description}</p>
                           <div className="text-xs text-muted-foreground">
                             <strong>Detected IP:</strong> {selectedExampleIP.content}
@@ -1993,52 +2005,52 @@ export const PhishingDetectorEnhanced = () => {
                           <span className="text-sm font-medium">Selected:</span>
                           <span className="text-xs flex items-center gap-1">
                             <span className="font-medium">{selectedExampleFile.title}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${
-                              selectedExampleFile.category === 'safe' ? 'bg-success/20 text-success' :
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${selectedExampleFile.category === 'safe' ? 'bg-success/20 text-success' :
                               selectedExampleFile.category === 'suspicious' ? 'bg-warning/20 text-warning' :
-                              'bg-danger/20 text-danger'
-                            }`}>
+                                'bg-danger/20 text-danger'
+                              }`}>
                               {selectedExampleFile.category}
                             </span>
                           </span>
                         </div>
                       )}
-                    <div
-                      className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      {file ? (
-                        <div className="space-y-2">
-                          <FileText className="w-12 h-12 mx-auto text-primary" />
-                          <p className="text-sm font-medium">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(file.size / 1024).toFixed(1)} KB • {file.type || 'Unknown type'}
-                          </p>
-                          {selectedExampleFile && (
-                            <div className="mt-2 p-2 bg-secondary/30 border border-border rounded text-xs">
-                              <p className="font-medium">{selectedExampleFile.title}</p>
-                              <p className="text-muted-foreground">{selectedExampleFile.description}</p>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
-                          <p className="text-sm font-medium">Click to upload or drag and drop</p>
-                          <p className="text-xs text-muted-foreground">Supports all file types up to 10MB</p>
-                        </div>
-                      )}
-                    </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => {
-                        setFile(e.target.files?.[0] || null);
-                        setSelectedExampleFile(null); // Clear example file when user uploads their own
-                        setFileNameText(e.target.files?.[0]?.name || '');
-                      }}
-                    />
+                      <div
+                        className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        {file ? (
+                          <div className="space-y-2">
+                            <FileText className="w-12 h-12 mx-auto text-primary" />
+                            <p className="text-sm font-medium">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(file.size / 1024).toFixed(1)} KB • {file.type || 'Unknown type'}
+                            </p>
+                            {selectedExampleFile && (
+                              <div className="mt-2 p-2 bg-secondary/30 border border-border rounded text-xs">
+                                <p className="font-medium">{selectedExampleFile.title}</p>
+                                <p className="text-muted-foreground">{selectedExampleFile.description}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
+                            <p className="text-sm font-medium">Click to upload or drag and drop</p>
+                            <p className="text-xs text-muted-foreground">Supports all file types up to 10MB</p>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*, application/*, text/*, .pdf, .doc, .docx, .txt, .csv"
+                        className="hidden"
+                        onChange={(e) => {
+                          setFile(e.target.files?.[0] || null);
+                          setSelectedExampleFile(null); // Clear example file when user uploads their own
+                          setFileNameText(e.target.files?.[0]?.name || '');
+                        }}
+                      />
                     </div>
                   </>
                 )}
@@ -2052,11 +2064,10 @@ export const PhishingDetectorEnhanced = () => {
                         <span className="text-sm font-medium">Selected:</span>
                         <span className="text-xs flex items-center gap-1">
                           <span className="font-medium">{selectedExampleDomain.title}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${
-                            selectedExampleDomain.category === 'safe' ? 'bg-success/20 text-success' :
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${selectedExampleDomain.category === 'safe' ? 'bg-success/20 text-success' :
                             selectedExampleDomain.category === 'suspicious' ? 'bg-warning/20 text-warning' :
-                            'bg-danger/20 text-danger'
-                          }`}>
+                              'bg-danger/20 text-danger'
+                            }`}>
                             {selectedExampleDomain.category}
                           </span>
                         </span>
@@ -2072,43 +2083,31 @@ export const PhishingDetectorEnhanced = () => {
                           content="Enter a domain name to check reputation, registration details, and potential malicious activity."
                           position="right"
                         />
-                        {realtimeScore > 0 && (
-                          <span
-                            className={`text-xs ml-auto ${
-                              realtimeScore < 30 ? 'text-success' : realtimeScore < 70 ? 'text-warning' : 'text-danger'
-                            }`}
-                            role="status"
-                            aria-live="polite"
-                          >
-                            Live Score: {realtimeScore}
-                          </span>
-                        )}
                       </label>
-                    <Textarea
-                      id="domain-input"
-                      placeholder="Enter domain(s) to analyze... (one per line)"
-                      value={domainText}
-                      onChange={(e) => setDomainText(e.target.value)}
-                      className={`min-h-[120px] bg-background text-foreground resize-none transition-all duration-300 ${
-                        realtimeScore === 0
+                      <Textarea
+                        id="domain-input"
+                        placeholder="Enter domain(s) to analyze... (one per line)"
+                        value={domainText}
+                        onChange={(e) => setDomainText(e.target.value)}
+                        className={`min-h-[120px] bg-background text-foreground resize-none transition-all duration-300 ${realtimeScore === 0
                           ? 'border-border focus:ring-2 focus:ring-primary'
                           : realtimeScore < 30
-                          ? 'border-success focus:ring-2 focus:ring-success shadow-[0_0_15px_hsl(var(--success)/0.3)]'
-                          : realtimeScore < 70
-                          ? 'border-warning focus:ring-2 focus:ring-warning shadow-[0_0_15px_hsl(var(--warning)/0.3)] animate-border-pulse'
-                          : 'border-danger focus:ring-2 focus:ring-danger shadow-[0_0_20px_hsl(var(--danger)/0.5)] animate-border-glow'
-                      }`}
-                      aria-label="Domain for analysis"
-                    />
-                    {selectedExampleDomain && (
-                      <div className="mt-2 p-4 bg-secondary/30 border border-border rounded-lg">
-                        <h4 className="font-semibold mb-2">Domain Content Analysis:</h4>
-                        <p className="text-sm text-muted-foreground mb-3">{selectedExampleDomain.description}</p>
-                        <div className="text-xs text-muted-foreground">
-                          <strong>Detected Domain:</strong> {selectedExampleDomain.content}
+                            ? 'border-success focus:ring-2 focus:ring-success shadow-[0_0_15px_hsl(var(--success)/0.3)]'
+                            : realtimeScore < 70
+                              ? 'border-warning focus:ring-2 focus:ring-warning shadow-[0_0_15px_hsl(var(--warning)/0.3)] animate-border-pulse'
+                              : 'border-danger focus:ring-2 focus:ring-danger shadow-[0_0_20px_hsl(var(--danger)/0.5)] animate-border-glow'
+                          }`}
+                        aria-label="Domain for analysis"
+                      />
+                      {selectedExampleDomain && (
+                        <div className="mt-2 p-4 bg-secondary/30 border border-border rounded-lg">
+                          <h4 className="font-semibold mb-2">Domain Content Analysis:</h4>
+                          <p className="text-sm text-muted-foreground mb-3">{selectedExampleDomain.description}</p>
+                          <div className="text-xs text-muted-foreground">
+                            <strong>Detected Domain:</strong> {selectedExampleDomain.content}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                     </div>
                   </>
                 )}
@@ -2148,14 +2147,14 @@ export const PhishingDetectorEnhanced = () => {
                       </>
                     )}
                   </RippleButton>
-                  
+
                   {(getCurrentInputText() || result) && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <motion.div
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          whileHover={{ scale: 1.05, rotate: 180 }}
+                          whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                         >
@@ -2168,7 +2167,7 @@ export const PhishingDetectorEnhanced = () => {
                           </Button>
                         </motion.div>
                       </TooltipTrigger>
-                      <TooltipContent>Reset (Esc)</TooltipContent>
+                      <TooltipContent>Reset</TooltipContent>
                     </Tooltip>
                   )}
                 </div>
@@ -2188,7 +2187,7 @@ export const PhishingDetectorEnhanced = () => {
               >
                 <Card className="p-6 bg-gradient-card border-border shadow-xl">
                   <div className="flex items-center justify-between mb-6">
-                    <motion.h2 
+                    <motion.h2
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       className="text-2xl font-bold text-foreground"
@@ -2266,9 +2265,8 @@ export const PhishingDetectorEnhanced = () => {
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.2 }}
-                          className={`text-4xl font-bold ${
-                            result.score < 30 ? 'text-success' : result.score < 70 ? 'text-warning' : 'text-danger'
-                          } ${result.score >= 70 ? 'animate-pulse' : ''}`}
+                          className={`text-4xl font-bold ${result.score < 30 ? 'text-success' : result.score < 70 ? 'text-warning' : 'text-danger'
+                            } ${result.score >= 70 ? 'animate-pulse' : ''}`}
                         >
                           <AnimatedCounter value={result.score} duration={1500} />
                         </motion.div>
@@ -2276,9 +2274,8 @@ export const PhishingDetectorEnhanced = () => {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Status</span>
-                          <span className={`font-semibold ${
-                            result.score < 30 ? 'text-success' : result.score < 70 ? 'text-warning' : 'text-danger'
-                          }`}>
+                          <span className={`font-semibold ${result.score < 30 ? 'text-success' : result.score < 70 ? 'text-warning' : 'text-danger'
+                            }`}>
                             {result.score < 30 ? '✅ SAFE' : result.score < 70 ? '⚠️ SUSPICIOUS' : '🚨 PHISHING'}
                           </span>
                         </div>
@@ -2478,6 +2475,57 @@ export const PhishingDetectorEnhanced = () => {
                       })()}
                     </div>
                   </div>
+
+                  {/* Individual Results Section for Multi-Analysis */}
+                  {result.metadata?.individualResults && result.metadata.individualResults.length > 1 && (
+                    <div className="mt-8 border-t border-border pt-8 animate-in fade-in slide-in-from-bottom-5 duration-500">
+                      <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                        <List className="w-5 h-5 text-primary" />
+                        Analysis Breakdown ({result.metadata.individualResults.length} items)
+                      </h3>
+                      <div className="grid gap-4">
+                        {result.metadata.individualResults.map((item, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            className={`p-4 rounded-r-2xl rounded-l-sm border-l-4 bg-secondary/5 border-border hover:bg-secondary/10 transition-all ${item.riskLevel === 'phishing' ? 'border-l-danger bg-danger/5 shadow-sm shadow-danger/10' :
+                              item.riskLevel === 'suspicious' ? 'border-l-warning bg-warning/5 shadow-sm shadow-warning/10' :
+                                'border-l-success bg-success/5 shadow-sm shadow-success/10'
+                              }`}
+                          >
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${item.riskLevel === 'phishing' ? 'bg-danger/20 text-danger' :
+                                    item.riskLevel === 'suspicious' ? 'bg-warning/20 text-warning' :
+                                      'bg-success/20 text-success'
+                                    }`}>
+                                    {item.verdict}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground font-mono">Score: {item.score}/100</span>
+                                </div>
+                                <div className="text-sm font-semibold truncate break-all text-foreground" title={item.item}>
+                                  {item.item}
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-2 md:max-w-[50%]">
+                                {item.reasons.slice(0, 3).map((reason, rIdx) => (
+                                  <span key={rIdx} className="text-[11px] bg-card px-2 py-1 rounded-md border border-border/50 text-muted-foreground whitespace-nowrap">
+                                    {reason}
+                                  </span>
+                                ))}
+                                {item.reasons.length > 3 && (
+                                  <span className="text-[11px] text-muted-foreground self-center">+{item.reasons.length - 3} more</span>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <SecurityRecommendation score={result.score} reasons={result.reasons} inputType={inputType} />
                 </Card>

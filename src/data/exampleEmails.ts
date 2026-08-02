@@ -8,386 +8,337 @@ export interface ExampleEmail {
 }
 
 export const exampleEmails: ExampleEmail[] = [
+  // ============================================
+  // SAFE EMAILS (Score < 30)
+  // ============================================
   {
     id: 'safe-1',
-    title: 'Safe - Newsletter',
+    title: 'Safe - Meeting Reminder',
     category: 'safe',
-    content: `Hi there,
+    content: `Hello Sarah,
 
-Thank you for subscribing to our monthly newsletter. Here's what we have for you this month:
+This is a reminder about our team meeting scheduled for tomorrow at 2:00 PM.
 
-- New product launches
-- Industry insights
-- Upcoming events
+Meeting Details:
+- Date: March 15, 2025
+- Time: 2:00 PM - 3:00 PM
+- Location: Conference Room B
+- Agenda: Q1 Review and Planning
 
-You can view the full newsletter on our website at https://newsletter.example.com
+Please let me know if you have any questions.
 
 Best regards,
-The Example Team
-
-Unsubscribe: https://example.com/unsubscribe`,
-    description: 'Legitimate newsletter subscription email with clear unsubscribe options and standard business communication.'
+Michael Chen
+Project Manager`,
+    description: 'Professional meeting reminder with clear details and no suspicious elements.'
   },
   {
     id: 'safe-2',
     title: 'Safe - Order Confirmation',
     category: 'safe',
-    content: `Hi John Smith,
+    content: `Dear John Smith,
 
-Thank you for your order #12345 from Example Store.
+Thank you for your order from TechStore Bangladesh.
 
-Order Details:
-- Product: Wireless Headphones
-- Price: $99.99
-- Estimated Delivery: 3-5 business days
+Order #BD-2025-1234
+- Product: Wireless Mouse
+- Price: ৳1,200
+- Delivery: 3-5 business days
 
-You can track your order at: https://example.com/orders/12345
+Track your order: https://techstore.com.bd/track/BD-2025-1234
 
-If you have any questions, please reply to this email or contact us at support@example.com
+For questions, email support@techstore.com.bd
 
 Best regards,
-Example Store Team`,
-    description: 'Standard e-commerce order confirmation with order details, tracking information, and customer support contact.'
+TechStore Team`,
+    description: 'Legitimate e-commerce order confirmation with proper HTTPS link and business details.'
   },
   {
     id: 'safe-3',
-    title: 'Safe - Amazon Bangladesh Order',
+    title: 'Safe - Newsletter',
     category: 'safe',
-    content: `Hello Mohammad Rahman,
+    content: `Hello Subscriber,
 
-Your Amazon.com.bd order #402-8934567-1234567 has been shipped!
+Welcome to our weekly tech newsletter!
 
-Order Details:
-- Book: "Thinking, Fast and Slow"
-- Price: ৳399
-- Delivery by: 15th March 2025
+This week's highlights:
+- New smartphone launches
+- Software updates guide
+- Tech industry news
 
-Track your shipment: https://amazon.com.bd/track/402-8934567-1234567
+Read full newsletter: https://newsletter.example.com
 
-For any assistance, visit Amazon.com.bd Help Center or call 09610001000
+To stop receiving these emails, visit https://example.com/preferences
 
-Thanks,
-Amazon Bangladesh Team`,
-    description: 'Legitimate order shipment notification from Amazon Bangladesh with tracking details and customer support information.'
+Regards,
+Tech News Team`,
+    description: 'Standard newsletter with proper unsubscribe link and HTTPS URLs only.'
   },
+
+  // ============================================
+  // SUSPICIOUS EMAILS (Score 30-69)
+  // ============================================
   {
     id: 'suspicious-1',
-    title: 'Suspicious - Urgent Action',
-    category: 'suspicious',
-    content: `Dear Valued Customer,
-
-Your account requires immediate attention. Please verify your information within 24 hours to avoid suspension.
-
-Click here to update your details: https://account-verify.example.tk
-
-Thank you for your cooperation.
-
-Customer Service Team`,
-    description: 'Generic account verification request with urgency and suspicious domain (.tk). Creates pressure without specific account details.'
-  },
-  {
-    id: 'suspicious-2',
-    title: 'Suspicious - Generic Greeting',
+    title: 'Suspicious - Account Update',
     category: 'suspicious',
     content: `Dear Customer,
 
-Kindly update your account information to continue using our services.
+Please update your account information.
 
-Please click the link below to verify your details:
-https://account-update.club/verify
+Click to verify: https://update-account.tk
 
-Thank you for your immediate attention to this matter.
+Thank you.
 
 Support Team`,
-    description: 'Vague account update request with generic greeting and suspicious domain (.club). No specific service or account mentioned.'
+    description: 'Generic greeting with suspicious .tk domain, lacks details but not overtly threatening.'
   },
   {
-    id: 'suspicious-3',
-    title: 'Suspicious - Daraz Prize',
+    id: 'suspicious-2',
+    title: 'Suspicious - Prize Notification',
     category: 'suspicious',
     content: `Congratulations!
 
-You have won ৳50,000 Daraz voucher in our lucky draw!
+You won a special prize in our draw.
 
-To claim your prize, click here: https://daraz-winner.club
+Claim here: https://winner-claim.club
 
-Hurry! Offer valid for 24 hours only.
+Limited time offer!
 
-Daraz Customer Care`,
-    description: 'Prize notification claiming to be from Daraz but using suspicious domain (.club). Creates urgency with time-limited offer.'
+Customer Service`,
+    description: 'Prize claim with suspicious .club domain and urgency, but minimal personal data requests.'
+  },
+  {
+    id: 'suspicious-3',
+    title: 'Suspicious - Service Alert',
+    category: 'suspicious',
+    content: `Dear User,
+
+Your service requires verification.
+
+Please visit: https://service-verify.xyz
+
+Complete within 48 hours.
+
+Service Team`,
+    description: 'Vague service alert with .xyz domain and mild urgency.'
   },
   {
     id: 'suspicious-4',
-    title: 'Suspicious - Grameenphone Recharge',
+    title: 'Suspicious - Delivery Notice',
     category: 'suspicious',
-    content: `Dear Grameenphone Customer,
+    content: `Package Notification
 
-Your mobile number is eligible for FREE lifetime data!
+Your delivery is pending.
 
-Claim now: https://grameenphone-free-data.tk
+Update address: https://delivery-update.online
 
-Limited offer! Click immediately to activate.
+Click here to proceed.
 
-Customer Care Team`,
-    description: 'Too-good-to-be-true offer claiming to be from Grameenphone but using suspicious domain (.tk). Promises unrealistic benefits.'
+Shipping Department`,
+    description: 'Generic delivery notice with suspicious .online domain and call-to-action.'
   },
+
+  // ============================================
+  // PHISHING EMAILS (Score >= 70)
+  // ============================================
   {
     id: 'phishing-1',
-    title: 'Phishing - Bkash Scam',
+    title: 'Phishing - Bkash Account Suspended',
     category: 'phishing',
-    content: `Dear User,
-
-We have detected unusual activity on your Bkash account. Your account has been temporarily suspended.
-
-URGENT: Click here immediately to verify your identity: http://192.168.1.100/bkash-verify
-
-You must confirm your password, credit card, and social security number within 24 hours or your account will be permanently locked.
-
-Kindly update your information now to restore access.
-
-Bkash Security Team
-Click here now: http://bkash-security.tk/verify`,
-    description: 'Classic phishing attempt impersonating Bkash with urgent account suspension threat and requests for sensitive information.'
-  },
-  {
-    id: 'phishing-2',
-    title: 'Phishing - Prize Winner',
-    category: 'phishing',
-    content: `Congratulations! You are a winner!
-
-You have been selected to receive $1,000,000 in our annual lottery draw!
-
-To claim your prize immediately, click here: https://lottery-claim.ml/winner
-
-You must provide your bank account details and social security number to process the payment. This offer expires today!
-
-Act now! Click here to claim your millions: https://prize-urgent.ga
-
-Lottery Commission`,
-    description: 'Lottery scam promising unrealistic prize money and requesting sensitive banking information. Uses multiple suspicious domains.'
-  },
-  {
-    id: 'phishing-3',
-    title: 'Phishing - Microsoft Alert',
-    category: 'phishing',
-    content: `Security Alert - Action Required
-
-Dear Microsoft User,
-
-We have detected suspicious login attempts to your account. Your account will be suspended unless you verify your identity immediately.
-
-Click here now: http://192.168.0.50/microsoft-verify
-Download this security update: https://microsoft-update.xyz/urgent
-
-Please confirm your password and update payment information within 12 hours.
-
-Urgent attention required!
-
-Microsoft Security Team`,
-    description: 'Fake Microsoft security alert with urgent account suspension threat and suspicious links requesting personal information.'
-  },
-  {
-    id: 'phishing-4',
-    title: 'Phishing - Bangladesh Railway Account',
-    category: 'phishing',
-    content: `Dear Bangladesh Railway Customer,
-
-Your Bangladesh Railway account has been temporarily blocked due to suspicious activity.
-
-URGENT: Verify your account immediately to avoid permanent suspension.
-
-Click here: http://railway-verify.tk/login
-Update your NID, TIN and payment details now!
-
-This is your last warning! Act within 6 hours.
-
-Bangladesh Railway Security Team`,
-    description: 'Fake Bangladesh Railway account alert requesting sensitive government ID numbers and payment information.'
-  },
-  {
-    id: 'phishing-5',
-    title: 'Phishing - Sonali Bank KYC Update',
-    category: 'phishing',
-    content: `Dear Sonali Bank Customer,
-
-Your KYC details are pending verification. Your account will be blocked if not updated immediately.
-
-URGENT ACTION REQUIRED:
-Click here: http://192.168.1.88/sonali-kyc
-Update NID, TIN, and mobile number
-Confirm ATM PIN and CVV number
-
-Complete within 12 hours or face account suspension.
-
-Sonali Bank
-Customer Service`,
-    description: 'Fake Sonali Bank KYC update request asking for sensitive banking and personal information with urgent deadline.'
-  },
-  {
-    id: 'phishing-6',
-    title: 'Phishing - Bkash Wallet',
-    category: 'phishing',
-    content: `Alert! Your Bkash Wallet
-
-Dear User,
-
-Your Bkash wallet has been temporarily locked due to KYC non-compliance.
-
-IMMEDIATE ACTION: Click here to update KYC: http://bkash-kyc.ml/verify
-
-Please provide:
-- NID details
-- TIN number
-- Bank account and mobile PIN
-- Complete within 24 hours!
-
-Download attachment to complete verification.
-
-Bkash Security`,
-    description: 'Fake Bkash wallet alert requesting KYC information and banking details with attachment download.'
-  },
-  {
-    id: 'phishing-7',
-    title: 'Phishing - Investment Scam',
-    category: 'phishing',
-    technique: 'Investment Scam',
-    content: `Dear Investor,
-
-Congratulations! Your investment portfolio has generated exceptional returns this quarter.
-
-Please wire the funds to:
-Bank: HSBC Private Banking
-Account Name: Global Investment Partners LLC
-Account Number: 123456789012
-
-Contact our financial advisor immediately to process your withdrawal.
-
-Investment Management Team`,
-    description: 'Investment scam promising exceptional returns and requesting wire transfer to suspicious account.'
-  },
-  {
-    id: 'phishing-8',
-    title: 'Phishing - Romance Scam',
-    category: 'phishing',
-    technique: 'Romance Scam',
-    content: `My Dearest Love,
-
-I hope this email finds you well. I have been thinking about you constantly since our last conversation.
-
-I am an oil executive working in Nigeria and I have come across a substantial amount of money that needs to be transferred out of the country. This is completely legitimate and I need your help as a trusted partner.
-
-Please provide your bank details so I can transfer $25 million to your account. You will receive 30% commission for your assistance.
-
-I love you and trust you completely.
-
-Yours sincerely,
-Dr. Ahmed Hassan`,
-    description: 'Romance scam using emotional manipulation to request banking information for fraudulent money transfer.'
-  },
-  {
-    id: 'phishing-9',
-    title: 'Phishing - Tech Support Scam',
-    category: 'phishing',
-    technique: 'Tech Support Scam',
-    content: `Microsoft Windows Support Alert
-
-WARNING: Your computer is infected with multiple viruses!
-
-We have detected 47 critical security threats on your Windows system. Your personal data is at risk!
-
-Call our certified technicians immediately: 1-800-123-4567
-Or click here to download our security scanner: https://microsoft-support.xyz/scan
-
-Do not turn off your computer! Our remote support team is ready to help.
-
-Microsoft Certified Support`,
-    description: 'Tech support scam impersonating Microsoft with fake virus alerts and phone numbers for fraudulent support.'
-  },
-  {
-    id: 'phishing-10',
-    title: 'Phishing - Lottery Scam',
-    category: 'phishing',
-    technique: 'Lottery Scam',
-    content: `OFFICIAL LOTTERY NOTIFICATION
-
-Congratulations! You have won €1,000,000 in the European Lottery!
-
-Your email address was randomly selected from 50 million entries worldwide.
-
-To claim your prize, send your full name, address, phone number, and bank details to: lottery.claim@europe-lottery.org
-
-Processing fee: €500 (refundable upon prize collection)
-
-Hurry! Claim within 7 days or forfeit your winnings.
-
-European Lottery Commission`,
-    description: 'Lottery scam promising large prize money and requesting personal and banking information with processing fee.'
-  },
-  {
-    id: 'phishing-11',
-    title: 'Phishing - Bank Account Alert',
-    category: 'phishing',
-    technique: 'Bank Scam',
-    content: `Urgent Security Alert - Your Bank Account
+    content: `URGENT SECURITY ALERT
 
 Dear Customer,
 
-We have detected unusual login attempts to your online banking account. For your security, we have temporarily limited access to your account.
+Your Bkash account has been SUSPENDED due to suspicious activity detected!
 
-To restore full access, please verify your identity immediately by clicking the link below:
+IMMEDIATE ACTION REQUIRED: Click here NOW: http://192.168.1.50/bkash-verify
 
-https://secure-bank-login.com/verify
+You MUST verify your identity within 6 hours by providing:
+- Your password
+- NID number  
+- Mobile PIN
+- Bank account details
 
-You will need to provide:
-- Full account number
-- Online banking password
-- Security questions and answers
+Failure to act will result in PERMANENT account closure!
+
+Click here immediately: https://bkash-urgent.tk/restore
+
+Bkash Security Team`,
+    description: 'Multi-layered phishing with IP URL, urgent threats, sensitive data requests, and suspicious .tk domain.'
+  },
+  {
+    id: 'phishing-2',
+    title: 'Phishing - Lottery Scam',
+    category: 'phishing',
+    content: `CONGRATULATIONS! YOU WON $5,000,000!!!
+
+Dear Winner,
+
+You have been selected to receive FIVE MILLION DOLLARS in our international lottery!
+
+URGENT: Claim your prize NOW: http://192.168.0.100/claim-prize
+
+To process payment, provide immediately:
+- Full name and address
+- Bank account number
+- Social security number
 - Credit card details for verification
 
-Failure to verify within 24 hours will result in permanent account suspension.
+This offer expires in 12 hours! ACT NOW!
 
-Bank Security Team`,
-    description: 'Bank scam impersonating bank security team requesting sensitive banking credentials and personal information.'
+Click here: https://lottery-winner.ml/urgent
+
+International Lottery Commission`,
+    description: 'Classic lottery scam with IP URL, ALL CAPS urgency, massive prize claim, and sensitive data theft.'
   },
   {
-    id: 'phishing-12',
-    title: 'Phishing - Job Offer Scam',
+    id: 'phishing-3',
+    title: 'Phishing - PayPal Security',
     category: 'phishing',
-    technique: 'Job Scam',
-    content: `Congratulations! You have been selected for a position at Google.
+    content: `SECURITY ALERT - URGENT ACTION REQUIRED
 
-Position: Senior Software Engineer
-Salary: $250,000 per year + benefits
-Location: Mountain View, CA (remote work available)
+Dear PayPal User,
 
-To complete your hiring process, please click here to submit your tax information and bank details for direct deposit setup:
+Your account will be SUSPENDED in 24 hours unless you verify immediately!
 
-https://google-hiring-portal.com/onboard
+CLICK HERE NOW: http://192.168.2.75/paypal-security
 
-You must complete this within 48 hours to secure your position.
+We detected unauthorized access. You must confirm:
+- Password
+- Credit card number
+- CVV and expiration date
+- Social security number
 
-Google HR Department`,
-    description: 'Job offer scam impersonating Google HR requesting sensitive tax and banking information for fake employment.'
+WARNING: Failure to verify will result in permanent account closure!
+
+Verify now: https://paypal-verify.ga/urgent
+
+PayPal Security Team`,
+    description: 'PayPal phishing with IP URL, threatening language, multiple sensitive requests, and .ga domain.'
   },
   {
-    id: 'phishing-13',
-    title: 'Phishing - Package Delivery Scam',
+    id: 'phishing-4',
+    title: 'Phishing - Sonali Bank KYC',
     category: 'phishing',
-    technique: 'Package Delivery Scam',
-    content: `FedEx Delivery Notification
+    content: `URGENT: Account Blocked - Immediate Action Required!
 
-Your package is waiting for delivery, but we need to confirm your address and payment information.
+Dear Sonali Bank Customer,
 
-Tracking Number: FX123456789
-Delivery Date: Today
+Your account has been LOCKED due to incomplete KYC verification!
 
-Due to COVID-19 restrictions, we require additional verification. Please click here to update your delivery preferences and pay any outstanding fees:
+CRITICAL: Update NOW: http://192.168.5.88/sonali-verify
 
-https://fedex-delivery-update.com/confirm
+Required immediately:
+- NID card number
+- TIN certificate  
+- ATM PIN
+- Credit card CVV
+- Bank account password
 
-Failure to confirm will result in package return to sender.
+You have only 6 hours! Account will be permanently closed!
 
-FedEx Delivery Services`,
-    description: 'Package delivery scam impersonating FedEx requesting payment information and address confirmation.'
+Click immediately: https://sonali-kyc.tk/urgent
+
+Sonali Bank Security Division`,
+    description: 'Banking phishing targeting Bangladesh with IP URL, government ID theft, and urgent threats.'
+  },
+  {
+    id: 'phishing-5',
+    title: 'Phishing - Microsoft Account Alert',
+    category: 'phishing',
+    content: `CRITICAL SECURITY ALERT!!!
+
+Your Microsoft account has been compromised!
+
+URGENT: Verify immediately: http://192.168.3.99/microsoft-secure
+
+We detected suspicious login attempts. Confirm NOW:
+- Account password
+- Payment information  
+- Security questions
+- Credit card details
+
+Your account will be DELETED in 12 hours if you don't act!
+
+Download security update: https://ms-update.xyz/critical
+
+Microsoft Security Team`,
+    description: 'Microsoft impersonation with IP URL, deletion threat, credential theft, and suspicious .xyz domain.'
+  },
+  {
+    id: 'phishing-6',
+    title: 'Phishing - Grameenphone KYC',
+    category: 'phishing',
+    content: `URGENT NOTICE - SIM Will Be Blocked!
+
+Dear Grameenphone User,
+
+Your mobile number will be BLOCKED within 24 hours due to incomplete KYC!
+
+IMMEDIATE ACTION: http://192.168.7.44/gp-kyc-update
+
+Submit now:
+- NID number
+- TIN details
+- Bkash PIN  
+- Bank account information
+
+Failure to comply will result in permanent disconnection!
+
+Update urgently: https://grameenphone-verify.ml/kyc
+
+Grameenphone Customer Care`,
+    description: 'Telecom phishing targeting Bangladesh with SIM blocking threat, IP URL, and government ID requests.'
+  },
+  {
+    id: 'phishing-7',
+    title: 'Phishing - Amazon Account Locked',
+    category: 'phishing',
+    content: `URGENT: Your Amazon Account Has Been Locked!
+
+Dear Customer,
+
+We detected UNUSUAL ACTIVITY and suspended your account immediately!
+
+VERIFY NOW: http://192.168.9.123/amazon-verify
+
+To unlock, confirm:
+- Account password
+- Social security number
+- Credit card number and CVV  
+- Billing address
+
+You have 6 hours or lose your account permanently!
+
+Click here urgently: https://amazon-secure.ga/restore
+
+Amazon Security Team`,
+    description: 'Amazon phishing with IP URL, account suspension threat, and comprehensive credential theft.'
+  },
+  {
+    id: 'phishing-8',
+    title: 'Phishing - Investment Fraud',
+    category: 'phishing',
+    content: `URGENT: You Won $250,000 in Bitcoin Investment!
+
+Dear Investor,
+
+CONGRATULATIONS! Your crypto investment generated MASSIVE returns!
+
+CLAIM NOW: http://192.168.4.200/bitcoin-claim
+
+To receive funds immediately, provide:
+- Bank account number
+- Routing number
+- Social security number  
+- Password for verification
+
+This offer expires in 24 hours! Wire transfer pending!
+
+Download form: https://crypto-invest.tk/urgent
+
+Global Investment Partners`,
+    description: 'Investment scam with Bitcoin lure, IP URL, unrealistic returns, and banking credential theft.'
   }
 ];

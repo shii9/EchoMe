@@ -140,32 +140,32 @@ export const HistorySidebar = ({ history, isOpen, onClose, onSelect, onClear, us
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between p-4 border-b border-border/50">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10">
+                  <div className="p-2 rounded-2xl bg-primary/10">
                     <Clock className="w-5 h-5 text-primary" />
                   </div>
                   <h2 className="text-lg font-semibold">Analysis History</h2>
                 </div>
-                <Button size="sm" variant="ghost" onClick={onClose}>
-                  <X className="w-5 h-5" />
-                </Button>
+                <button
+                  onClick={onClose}
+                  className="x-close-btn x-close-btn-md"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-            {/* Debounce search input -> update searchQuery after a short delay */}
-            {/* Note: placing effect here ensures component mounted before scheduling */}
-            {
-              /* eslint-disable-next-line react-hooks/rules-of-hooks */
-            }
+              {/* Debounce search input -> update searchQuery after a short delay */}
+              {/* Note: placing effect here ensures component mounted before scheduling */}
               {/* Filters and Search */}
               <div className="p-4 border-b border-border/50 space-y-3">
                 {/* Search Bar */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                      placeholder="Search history..."
-                      value={searchInput}
-                      onChange={(e) => setSearchInput(e.target.value)}
-                      className="pl-10"
-                    />
+                    placeholder="Search history..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
 
                 {/* Filter Controls */}
@@ -220,7 +220,7 @@ export const HistorySidebar = ({ history, isOpen, onClose, onSelect, onClear, us
                     {sortedHistory.map((item) => (
                       <div key={item.id}>
                         <Card
-                          className="p-3 cursor-pointer hover:bg-accent/10 transition-colors group border-border/30 hover:border-primary/20"
+                          className="p-3 cursor-pointer hover:bg-accent/10 transition-colors group border-border/30 hover:border-primary/20 rounded-r-xl rounded-l-sm"
                           onClick={() => {
                             onSelect(item);
                             onClose();
@@ -262,46 +262,46 @@ export const HistorySidebar = ({ history, isOpen, onClose, onSelect, onClear, us
                                       <div className="space-y-1">
                                         <div className="font-medium">
                                           {item.result.score < 30 ? '✅ Safe IP Address' :
-                                           item.result.score < 70 ? '⚠️ Suspicious IP Address' :
-                                           '🚨 Malicious IP Address'}
+                                            item.result.score < 70 ? '⚠️ Suspicious IP Address' :
+                                              '🚨 Malicious IP Address'}
                                         </div>
                                         <div className="text-xs mt-1">
                                           {item.result.score < 30 ?
                                             'This IP address appears safe with no suspicious patterns detected. It follows standard IP address conventions and shows no indicators of malicious activity.' :
-                                           item.result.score < 70 ?
-                                            'This IP address shows some suspicious characteristics that warrant caution. While not definitively malicious, it exhibits patterns commonly associated with potential security risks.' :
-                                            'This IP address exhibits multiple high-risk indicators suggesting potential malicious activity. It may be associated with botnets, command-and-control servers, or other cyber threats.'}
+                                            item.result.score < 70 ?
+                                              'This IP address shows some suspicious characteristics that warrant caution. While not definitively malicious, it exhibits patterns commonly associated with potential security risks.' :
+                                              'This IP address exhibits multiple high-risk indicators suggesting potential malicious activity. It may be associated with botnets, command-and-control servers, or other cyber threats.'}
                                         </div>
                                         <div className="text-xs mt-1 font-medium">Recommendation:</div>
                                         <div className="text-xs">
                                           {item.result.score < 30 ?
                                             'This IP address appears safe, but always verify the source and exercise normal security precautions.' :
-                                           item.result.score < 70 ?
-                                            'Exercise caution when interacting with this IP address. Verify its legitimacy through official channels before proceeding.' :
-                                            'Avoid any interaction with this IP address. It may be associated with malicious activities and should be blocked.'}
+                                            item.result.score < 70 ?
+                                              'Exercise caution when interacting with this IP address. Verify its legitimacy through official channels before proceeding.' :
+                                              'Avoid any interaction with this IP address. It may be associated with malicious activities and should be blocked.'}
                                         </div>
                                       </div>
                                     ) : (
                                       <div className="space-y-1">
                                         <div className="font-medium">
                                           {item.result.score < 30 ? '✅ Safe Domain' :
-                                           item.result.score < 70 ? '⚠️ Suspicious Domain' :
-                                           '🚨 Malicious Domain'}
+                                            item.result.score < 70 ? '⚠️ Suspicious Domain' :
+                                              '🚨 Malicious Domain'}
                                         </div>
                                         <div className="text-xs mt-1">
                                           {item.result.score < 30 ?
                                             'This domain name appears safe with no suspicious patterns detected. It follows standard domain naming conventions and shows no indicators of malicious activity.' :
-                                           item.result.score < 70 ?
-                                            'This domain name shows some suspicious characteristics that warrant caution. While not definitively malicious, it exhibits patterns commonly associated with potential security risks.' :
-                                            'This domain name exhibits multiple high-risk indicators suggesting potential malicious activity. It may be associated with phishing campaigns, malware distribution, or other cyber threats.'}
+                                            item.result.score < 70 ?
+                                              'This domain name shows some suspicious characteristics that warrant caution. While not definitively malicious, it exhibits patterns commonly associated with potential security risks.' :
+                                              'This domain name exhibits multiple high-risk indicators suggesting potential malicious activity. It may be associated with phishing campaigns, malware distribution, or other cyber threats.'}
                                         </div>
                                         <div className="text-xs mt-1 font-medium">Recommendation:</div>
                                         <div className="text-xs">
                                           {item.result.score < 30 ?
                                             'This domain appears safe, but always verify the website\'s legitimacy before entering sensitive information.' :
-                                           item.result.score < 70 ?
-                                            'Exercise caution with this domain. Verify its legitimacy through official channels before proceeding.' :
-                                            'Do not visit this domain. It may be associated with phishing or malicious activities and should be avoided.'}
+                                            item.result.score < 70 ?
+                                              'Exercise caution with this domain. Verify its legitimacy through official channels before proceeding.' :
+                                              'Do not visit this domain. It may be associated with phishing or malicious activities and should be avoided.'}
                                         </div>
                                       </div>
                                     )}
@@ -333,10 +333,10 @@ export const HistorySidebar = ({ history, isOpen, onClose, onSelect, onClear, us
 
                               <p className="text-xs text-muted-foreground">
                                 {item.inputType === 'email' ? item.result.emailPreview :
-                                 item.inputType === 'file' ? `File: ${item.inputContent}` :
-                                 item.inputType === 'url' ? `URL: ${item.inputContent}` :
-                                 item.inputType === 'ip' ? `IP: ${item.inputContent}` :
-                                 `Domain: ${item.inputContent}`}
+                                  item.inputType === 'file' ? `File: ${item.inputContent}` :
+                                    item.inputType === 'url' ? `URL: ${item.inputContent}` :
+                                      item.inputType === 'ip' ? `IP: ${item.inputContent}` :
+                                        `Domain: ${item.inputContent}`}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {new Date(item.timestamp).toLocaleString()}

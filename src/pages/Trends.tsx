@@ -1,11 +1,11 @@
 import { TrendsChart } from '../components/TrendsChart';
 import { ThreatPatternTimeline } from '../components/ThreatPatternTimeline';
-import { BreadcrumbNav } from '../components/ui/breadcrumb-nav';
+
 import { useAnalytics } from '../contexts/AnalyticsContext';
 import { Navbar } from '../components/Navbar';
 import { HistorySidebar } from '../components/HistorySidebar';
 import { QuizMode } from '../components/QuizMode';
-import { MessageSquare, Download, FileJson, FileText, TrendingUp } from 'lucide-react';
+import { MessageSquare, Download, FileJson, FileText, TrendingUp, Brain } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Button } from '../components/ui/button';
@@ -13,15 +13,16 @@ import { exportHistoryToCSV } from '../utils/csvExport';
 import { exportHistoryToJSON } from '../utils/jsonExport';
 import { exportHistoryToPDF } from '../utils/pdfExport';
 import { useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import APIKeysModal from '../components/APIKeysModal';
 import { AIAssistant } from '../components/AIAssistant';
-
+import { MobileMenu } from '../components/MobileMenu';
 
 const Trends = () => {
   const { history, setHistory, sidebarHistory, setSidebarHistory, historyOpen, setHistoryOpen, quizOpen, setQuizOpen } = useAnalytics();
   const [apiModalOpen, setApiModalOpen] = useState(false);
   const [showAI, setShowAI] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dataRange, setDataRange] = useState<'week' | 'month' | 'all'>('month');
 
   const handleQuizAchievement = (achievement: any) => {
@@ -64,7 +65,18 @@ const Trends = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar onHistoryClick={() => setHistoryOpen(!historyOpen)} onQuizClick={() => setQuizOpen(!quizOpen)} onMenuClick={() => {}} />
+      <Navbar onHistoryClick={() => setHistoryOpen(!historyOpen)} onQuizClick={() => setQuizOpen(!quizOpen)} onMenuClick={() => setMobileMenuOpen(true)} />
+
+      <MobileMenu
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        onHistoryClick={() => setHistoryOpen(!historyOpen)}
+        onQuizClick={() => setQuizOpen(!quizOpen)}
+        onAIClick={() => setShowAI(!showAI)}
+        onExportClick={handleExportCSV}
+        onAPIKeysClick={() => setApiModalOpen(true)}
+        historyLength={history.length}
+      />
 
       {/* Desktop Quick Actions - Hidden on Mobile */}
       <div className="hidden md:flex fixed top-20 right-4 flex-col gap-2 z-30 no-print">
@@ -76,8 +88,9 @@ const Trends = () => {
               onClick={() => setShowAI(true)}
               className="gap-2 bg-gradient-to-r from-secondary/5 to-secondary/10 hover:from-secondary/10 hover:to-secondary/20 border-secondary/30 hover:border-secondary/50 transition-all animate-glow-pulse shadow-sm hover:shadow-md"
             >
-              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
-                N
+              <div className="relative w-5 h-5 rounded-md bg-gradient-primary flex items-center justify-center text-primary-foreground shadow-sm ring-1 ring-white/10 overflow-hidden">
+                <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%,100%_100%] animate-[shimmer_2s_infinite]"></div>
+                <Brain className="w-3 h-3 relative z-10" />
               </div>
               <span className="hidden">Nio AI</span>
             </Button>
@@ -141,36 +154,53 @@ const Trends = () => {
         </Tooltip>
       </div>
 
-      <div className="pt-20 pb-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="mb-6">
-            <BreadcrumbNav currentView="trends" />
-          </div>
+      <div className="pt-20 pb-12 px-4">
+        <div className="w-full max-w-5xl mx-auto md:translate-x-px">
 
-          <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-700">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-8"
+          >
             {/* Hero Section */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 border border-border/50">
               <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-accent/5 animate-pulse"></div>
               <div className="relative p-8 md:p-12">
                 <div className="max-w-4xl mx-auto text-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6"
+                  >
                     <TrendingUp className="w-4 h-4 text-primary" />
                     <span className="text-sm font-medium text-primary">Security Trends</span>
-                  </div>
-                  <h1 className="text-4xl md:text-5xl font-bold mb-5 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  </motion.div>
+                  <motion.h1
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent"
+                  >
                     Track Your Security Evolution
-                  </h1>
-                  <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
+                  >
                     Monitor your phishing detection trends over time, identify emerging patterns,
                     and visualize your journey towards better cybersecurity awareness and protection.
-                  </p>
+                  </motion.p>
                 </div>
               </div>
             </div>
 
             <TrendsChart history={history} />
             <ThreatPatternTimeline history={history} />
-          </div>
+          </motion.div>
         </div>
       </div>
 
@@ -196,7 +226,7 @@ const Trends = () => {
           // Store the selected item in sessionStorage to be picked up by Index page
           sessionStorage.setItem('selectedHistoryItem', JSON.stringify(item));
           // Navigate to home page and load the selected item
-          window.location.href = '/';
+          window.location.href = import.meta.env.BASE_URL;
         }}
         onClear={() => {
           // Clear sidebar history only - this doesn't affect trends/stats data

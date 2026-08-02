@@ -113,9 +113,12 @@ export const ComparisonMode = ({ onClose, onAnalyze, inputType = 'email' }: Comp
               <ArrowLeftRight className="w-6 h-6 text-primary" />
               <h2 className="text-2xl font-bold text-foreground">Side-by-Side Comparison</h2>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-5 h-5" />
-            </Button>
+            <button
+              onClick={onClose}
+              className="x-close-btn x-close-btn-md"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 mb-6">
@@ -154,6 +157,7 @@ export const ComparisonMode = ({ onClose, onAnalyze, inputType = 'email' }: Comp
               <input
                 ref={fileInputRefA}
                 type="file"
+                accept="image/*, application/*, text/*, .pdf, .doc, .docx, .txt, .csv"
                 className="hidden"
                 onChange={(e) => {
                   setFileA(e.target.files?.[0] || null);
@@ -225,6 +229,7 @@ export const ComparisonMode = ({ onClose, onAnalyze, inputType = 'email' }: Comp
               <input
                 ref={fileInputRefB}
                 type="file"
+                accept="image/*, application/*, text/*, .pdf, .doc, .docx, .txt, .csv"
                 className="hidden"
                 onChange={(e) => {
                   setFileB(e.target.files?.[0] || null);

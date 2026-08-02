@@ -1,40 +1,31 @@
 {
-  "name": "Phishing Analyzer",
-  "short_name": "PhishingAnalyzer",
+  "name": "EchoMe",
+  "short_name": "EchoMe",
   "description": "Advanced AI-powered phishing analysis and security tool",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0f1419",
   "theme_color": "#4a9eff",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/favicon.ico",
+      "src": "./favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
     },
     {
-      "src": "/placeholder.svg",
+      "src": "./placeholder.svg",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "/placeholder.svg",
+      "src": "./placeholder.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ],
   "categories": ["security", "productivity", "utilities"],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "New Analysis",
-      "short_name": "Analyze",
-      "description": "Start a new email analysis",
-      "url": "/",
-      "icons": []
-    }
-  ]
+  "screenshots": []
 }
