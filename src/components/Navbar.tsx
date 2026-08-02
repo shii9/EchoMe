@@ -21,7 +21,7 @@ export const Navbar = ({ onHistoryClick, onQuizClick, onMenuClick }: NavbarProps
   return (
     <>
       <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-        <nav className="pointer-events-auto bg-transparent border-transparent shadow-none rounded-none px-1 py-1 lg:bg-card/90 lg:backdrop-blur-xl lg:border lg:border-border/60 lg:shadow-2xl lg:rounded-full lg:px-3 lg:py-2 flex items-center justify-between gap-3 transition-all w-full max-w-5xl">
+        <nav className="pointer-events-auto bg-transparent border-transparent shadow-none rounded-none px-1 py-1 lg:bg-card/90 lg:backdrop-blur-xl lg:border lg:border-border/60 lg:shadow-2xl lg:rounded-full lg:px-3 lg:py-2 flex items-center justify-end lg:justify-between gap-3 transition-all w-full max-w-5xl">
           {/* Logo and Brand */}
           <Link to="/" className="hidden lg:flex items-center gap-2 px-2">
             <img
