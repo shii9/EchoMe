@@ -68,7 +68,7 @@ export const MobileMenu = ({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 w-full bg-card border-border z-50 lg:hidden shadow-2xl"
+            className="fixed top-0 right-0 bottom-0 w-[min(82vw,24rem)] bg-card border-l border-border z-50 lg:hidden shadow-2xl"
           >
             <div className="flex flex-col h-full">
               {/* Header */}
