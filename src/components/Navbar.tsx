@@ -1,4 +1,4 @@
-import { Shield, BarChart3, History, Brain, Menu, Home, TrendingUp, UserCheck, BookOpen, Zap } from 'lucide-react';
+import { BarChart3, History, Brain, Menu, Home, TrendingUp, UserCheck, BookOpen, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Link, useLocation } from 'react-router-dom';
@@ -24,9 +24,11 @@ export const Navbar = ({ onHistoryClick, onQuizClick, onMenuClick }: NavbarProps
         <nav className="pointer-events-auto bg-card/90 backdrop-blur-xl border border-border/60 shadow-2xl rounded-full px-3 py-2 flex items-center justify-between gap-3 transition-all w-full max-w-5xl">
           {/* Logo and Brand */}
           <Link to="/" className="flex items-center gap-2 px-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold shadow-sm shadow-primary/30">
-              <Shield className="w-4 h-4 stroke-[2.5]" />
-            </div>
+            <img
+              src={`${import.meta.env.BASE_URL}echome-logo.svg`}
+              alt="EchoMe shield"
+              className="w-8 h-8 rounded-full shadow-sm shadow-primary/30"
+            />
             <div className="hidden sm:flex flex-col">
               <h1 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-1.5">
                 EchoMe

@@ -1570,9 +1570,9 @@ export const PhishingDetectorEnhanced = () => {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-              className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-full bg-gradient-primary mb-4 md:mb-6 shadow-glow relative"
+              className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-full mb-4 md:mb-6 shadow-glow relative overflow-hidden"
             >
-              <Shield className="w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 text-primary-foreground" />
+              <img src={`${import.meta.env.BASE_URL}echome-logo.svg`} alt="EchoMe shield" className="w-full h-full" />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}

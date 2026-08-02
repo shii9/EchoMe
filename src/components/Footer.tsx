@@ -1,4 +1,4 @@
-import { Shield, Github, Mail } from 'lucide-react';
+import { Github, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const Footer = () => {
@@ -8,9 +8,7 @@ export const Footer = () => {
         {/* Desktop Layout */}
         <div className="hidden sm:flex items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
-            <div className="relative p-1 rounded-lg bg-primary/10">
-              <Shield className="w-4 h-4 text-primary" />
-            </div>
+            <img src={`${import.meta.env.BASE_URL}echome-logo.svg`} alt="EchoMe shield" className="w-6 h-6 rounded-full" />
             <span className="font-bold text-sm truncate">EchoMe</span>
           </div>
 
@@ -37,9 +35,7 @@ export const Footer = () => {
         <div className="flex sm:hidden items-center justify-between w-full gap-1">
           {/* Brand */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <div className="relative p-1 rounded-lg bg-primary/10">
-              <Shield className="w-3.5 h-3.5 text-primary" />
-            </div>
+            <img src={`${import.meta.env.BASE_URL}echome-logo.svg`} alt="EchoMe shield" className="w-5 h-5 rounded-full" />
             <span className="font-bold text-[11px] truncate">EchoMe</span>
           </div>
 

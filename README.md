@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/shii9/EchoMe/main/public/echome-logo.svg" alt="EchoMe" width="420" />
+  <img src="https://raw.githubusercontent.com/shii9/EchoMe/main/public/echome-logo.svg" alt="EchoMe shield logo" width="128" />
 
   <h1>EchoMe</h1>
   <p><strong>AI-powered phishing detection and cybersecurity analysis in your browser.</strong></p>
