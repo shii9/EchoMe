@@ -178,8 +178,11 @@ npm run build
 npm run deploy
 ```
 
-The `deploy` command publishes the `dist` folder through the `gh-pages`
-package. Configure the repository's Pages source to the `gh-pages` branch.
+The repository also includes an automatic GitHub Actions deployment workflow.
+For automatic deployment, open **Settings → Pages** and set the source to
+**GitHub Actions**, then rerun the workflow if needed. The `deploy` command is
+available as a manual fallback and publishes the `dist` folder to the
+`gh-pages` branch.
 
 ---
 
