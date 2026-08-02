@@ -1,4 +1,4 @@
-const CACHE_NAME = 'phishing-detector-v2';
+const CACHE_NAME = 'echome-v3';
 const APP_SCOPE = new URL('./', self.registration.scope).href;
 const urlsToCache = [
   APP_SCOPE,
@@ -7,6 +7,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(urlsToCache))
@@ -20,13 +21,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const isNavigation = event.request.mode === 'navigate' || requestUrl.pathname.endsWith('.html');
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => response || fetch(event.request))
+    isNavigation
+      ? fetch(event.request)
+          .then((response) => {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            return response;
+          })
+          .catch(() => caches.match(event.request))
+      : caches.match(event.request).then((response) => response || fetch(event.request))
   );
 });
 
 self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
