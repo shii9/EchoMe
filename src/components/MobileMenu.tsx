@@ -74,7 +74,12 @@ export const MobileMenu = ({
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold">Menu</h2>
+                  <img
+                    src={`${import.meta.env.BASE_URL}echome-logo.svg`}
+                    alt="EchoMe shield"
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <h2 className="text-lg font-semibold">EchoMe</h2>
                   <ThemeToggle />
                 </div>
                 <button
@@ -90,7 +95,6 @@ export const MobileMenu = ({
                 <div className="space-y-4 px-2">
                   {/* Navigation Links */}
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground px-3 mb-2">Navigation</p>
                     {navigationItems.map((item, index) => {
                       const Icon = item.icon;
                       const isActive = location.pathname === item.to;
